@@ -33,6 +33,8 @@ jobs:
       # 2. Build React SPA + CF Worker bundle
       - name: Build Dashboard
         run: pnpm --filter @workspace/dashboard run build
+        env:
+          VITE_API_SECRET: ${{ secrets.API_SECRET }}
 
       # 3. Deploy to CF Pages (project: mr-panel)
       - name: Deploy to Cloudflare Pages
