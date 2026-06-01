@@ -1063,16 +1063,9 @@ app.post("/api/seed", async (c) => {
   return c.json({ ok: true, message: "Database is ready" });
 });
 
-// ------- EVENTS (WebSocket via Durable Object) -------
-app.get("/api/events", async (c) => {
-  const upgrade = c.req.header("Upgrade");
-  if (upgrade !== "websocket") {
-    return c.text("Expected websocket upgrade", 426);
-  }
-  const id = c.env.EVENT_BUS.idFromName("global");
-  const stub = c.env.EVENT_BUS.get(id);
-  return stub.fetch("https://do.local/ws", c.req.raw);
-});
+// ------- EVENTS (WebSocket — handled directly in fetch(), bypassing Hono) -------
+// WebSocket 101 upgrade is intercepted before Hono in the default export below.
+app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
 
 // EventBus Durable Object class lives in the separate `event-bus-worker`
 // Worker (Pages cannot host DO classes directly). See `artifacts/event-bus-worker/`.
@@ -1081,6 +1074,12 @@ app.get("/api/events", async (c) => {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    // WebSocket upgrade MUST be handled directly — Hono cannot forward 101 responses.
+    if (url.pathname === "/api/events" && request.headers.get("Upgrade") === "websocket") {
+      const id = env.EVENT_BUS.idFromName("global");
+      const stub = env.EVENT_BUS.get(id);
+      return stub.fetch(new Request("https://do.local/ws", request));
+    }
     if (url.pathname.startsWith("/api/")) {
       return app.fetch(request, env, ctx);
     }
