@@ -1902,17 +1902,6 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout }: {
   const [sessLoading, setSessLoading] = useState(true);
   const mySessionId = localStorage.getItem(SESS_KEY) ?? "";
 
-  /* ── Login Limit ── */
-  const [loginLimit, setLoginLimit] = useState(5);
-  const [loginLimitSaving, setLoginLimitSaving] = useState(false);
-  const [showLimitPin, setShowLimitPin] = useState(false);
-  const [limitPinVal, setLimitPinVal] = useState("");
-  const [limitPinErr, setLimitPinErr] = useState("");
-  useEffect(() => {
-    apiFetch(`/api/apps/${appId}`).then(r => r.ok ? r.json() : null)
-      .then(app => { if (app?.loginLimit) setLoginLimit(app.loginLimit); })
-      .catch(() => {});
-  }, [appId]);
 
   // Skip auto-logout on the first poll — avoids false logouts from cold-start /
   // network races right after Settings opens.
@@ -2198,75 +2187,6 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout }: {
         </div>
       </div>
 
-      {/* ── Login Limit ── */}
-      <div style={{ background: t.card, borderRadius: 10, border: `1px solid ${t.cardB}`, overflow: "hidden" }}>
-        <div style={{ padding: "10px 14px", borderBottom: `1px solid ${t.hdrB}`, fontSize: 12, fontWeight: 700, color: t.txt2 }}>Max Concurrent Logins</div>
-        <div style={{ padding: "16px 16px 14px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 8 }}>
-            <input
-              type="range" min={1} max={100} step={1}
-              value={loginLimit}
-              onChange={e => setLoginLimit(Number(e.target.value))}
-              style={{ flex: 1, accentColor: "#6366f1", cursor: "pointer", height: 4 }}
-            />
-            <div style={{ minWidth: 44, textAlign: "center", background: "#6366f1", color: "#fff", borderRadius: 8, padding: "5px 8px", fontWeight: 900, fontSize: 17, lineHeight: 1 }}>
-              {loginLimit}
-            </div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: t.txt2, marginBottom: 10, paddingRight: 58 }}>
-            <span>1</span><span>25</span><span>50</span><span>75</span><span>100</span>
-          </div>
-          <div style={{ fontSize: 11, color: t.txt2, marginBottom: 12 }}>
-            {loginLimit === 1 ? "Sirf 1 banda ek time pe logged in ho sakta hai" : `Max ${loginLimit} log ek saath logged in ho sakte hain`}
-          </div>
-          {showLimitPin ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ fontSize: 11, color: t.txt2, fontWeight: 600 }}>Confirm with your PIN to save:</div>
-              <input
-                type="password"
-                value={limitPinVal}
-                onChange={e => { setLimitPinVal(e.target.value); setLimitPinErr(""); }}
-                placeholder="Enter your PIN"
-                autoFocus
-                style={{ padding: "10px 12px", borderRadius: 9, border: `1.5px solid ${limitPinErr ? "#ef4444" : t.cardB}`, background: t.bg, color: t.txt, fontSize: 13, outline: "none" }}
-              />
-              {limitPinErr && <div style={{ color: "#ef4444", fontSize: 11, fontWeight: 600 }}>{limitPinErr}</div>}
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={async () => {
-                    setLimitPinErr("");
-                    setLoginLimitSaving(true);
-                    try {
-                      const vr = await apiFetch(`/api/apps/${appId}/verify-pin`, {
-                        method: "POST", headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ pin: limitPinVal }),
-                      });
-                      if (!vr.ok) { setLimitPinErr("Wrong PIN. Try again."); setLimitPinVal(""); return; }
-                      await apiFetch(`/api/apps/${appId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ loginLimit }) });
-                      setShowLimitPin(false); setLimitPinVal("");
-                    } catch { setLimitPinErr("Network error. Try again."); }
-                    finally { setLoginLimitSaving(false); }
-                  }}
-                  disabled={loginLimitSaving || !limitPinVal}
-                  style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: loginLimitSaving || !limitPinVal ? "#334155" : "#6366f1", border: "none", color: "#fff", fontWeight: 700, fontSize: 13, cursor: loginLimitSaving || !limitPinVal ? "default" : "pointer" }}>
-                  {loginLimitSaving ? "Saving…" : "Confirm"}
-                </button>
-                <button
-                  onClick={() => { setShowLimitPin(false); setLimitPinVal(""); setLimitPinErr(""); }}
-                  style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: "transparent", border: `1.5px solid ${t.cardB}`, color: t.txt2, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowLimitPin(true)}
-              style={{ width: "100%", padding: "10px 0", borderRadius: 9, background: "#6366f1", border: "none", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-              Save Login Limit
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* ── App Info ── */}
       <div style={{ background: t.card, borderRadius: 10, border: `1px solid ${t.cardB}`, overflow: "hidden" }}>
