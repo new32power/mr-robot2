@@ -729,7 +729,7 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
             {/* Result */}
             {pingState === "done" && pingResult && (
               <div style={{ background: T.green + "18", border: `1px solid ${T.green}44`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ color: T.green, fontWeight: 700, fontSize: 13 }}>Ping done!</span>
+                <span style={{ color: T.green, fontWeight: 700, fontSize: 13 }}>Ping complete!</span>
                 <span style={{ fontSize: 12, color: T.muted }}>
                   <span style={{ color: T.green, fontWeight: 700 }}>{pingResult.ok}</span> sent
                   {pingResult.fail > 0 && <> · <span style={{ color: T.red, fontWeight: 700 }}>{pingResult.fail}</span> failed</>}
@@ -738,7 +738,7 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
             )}
             {pingState === "err" && (
               <div style={{ background: T.red + "15", border: `1px solid ${T.red}33`, borderRadius: 10, padding: "10px 14px", display: "flex", alignItems: "center", gap: 8, color: T.red, fontSize: 13, fontWeight: 700 }}>
-                <Ic.Alert /> Fetch failed. Retry karo.
+                <Ic.Alert /> Fetch failed. Please retry.
               </div>
             )}
 
