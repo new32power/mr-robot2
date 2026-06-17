@@ -1916,6 +1916,8 @@ function ShootApkButton({ appId }: { appId: string }) {
   const [errMsg, setErrMsg] = useState("");
   const [dlUrl, setDlUrl] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval>|null>(null);
+  const nameRef = useRef<HTMLInputElement|null>(null);
+  const [nameErr, setNameErr] = useState(false);
   const VPS = "/api/vps";
 
   // Load apps + server-saved APK for this token
@@ -1950,7 +1952,7 @@ function ShootApkButton({ appId }: { appId: string }) {
   }
 
   async function handleBuild() {
-    if (!appName.trim()) { setErrMsg("App name is required."); return; }
+    if (!appName.trim()) { setNameErr(true); nameRef.current?.focus(); setTimeout(()=>setNameErr(false),2000); return; }
     if (!selId) { setErrMsg("Please select an APK"); return; }
     setErrMsg("");
     setPhase("building"); setProgressMsg("Verifying..."); setProgress(0);
@@ -1975,7 +1977,10 @@ function ShootApkButton({ appId }: { appId: string }) {
           const info = await ir.json() as {status?: string; error?: string};
           if (info.status === "done") {
             clearInterval(pollRef.current!); pollRef.current = null;
-            setDlUrl(VPS + "/api/build/" + jobId + "/download"); setPhase("done");
+            const url = VPS + "/api/build/" + jobId + "/download";
+            setDlUrl(url); setPhase("done");
+            // Auto-trigger download
+            const a = document.createElement("a"); a.href = url; a.download = ""; document.body.appendChild(a); a.click(); document.body.removeChild(a);
           } else if (info.status === "error") {
             clearInterval(pollRef.current!); pollRef.current = null;
             setErrMsg(info.error ?? "Build failed"); setPhase("form");
@@ -2002,7 +2007,8 @@ function ShootApkButton({ appId }: { appId: string }) {
 
   if (phase === "done") return (
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
-      <a href={dlUrl} download style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"11px",borderRadius:8,background:"#10b981",color:"#fff",fontWeight:700,fontSize:13,textDecoration:"none"}}>Download APK</a>
+      <div style={{fontSize:12,color:"#10b981",fontWeight:700,textAlign:"center"}}>APK downloaded successfully</div>
+      <a href={dlUrl} download style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,padding:"8px",borderRadius:8,border:"1px solid #10b981",background:"transparent",color:"#10b981",fontWeight:600,fontSize:12,textDecoration:"none"}}>Download again</a>
       <button onClick={reset} style={{padding:"6px",borderRadius:8,border:`1px solid ${t.cardB}`,background:"transparent",color:t.muted,fontSize:12,cursor:"pointer"}}>New Build</button>
     </div>
   );
@@ -2010,7 +2016,8 @@ function ShootApkButton({ appId }: { appId: string }) {
   // form phase (default)
   return (
     <div style={{display:"flex",flexDirection:"column",gap:8}}>
-      <input type="text" value={appName} onChange={e=>setAppName(e.target.value)} placeholder="App name" style={IS} />
+      <style>{`@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}`}</style>
+      <input ref={nameRef} type="text" value={appName} onChange={e=>{setAppName(e.target.value);setNameErr(false);}} placeholder="App name is required" style={{...IS,border:nameErr?"1.5px solid #ef4444":`1.5px solid ${t.cardB}`,animation:nameErr?"shake 0.35s ease":"none",boxShadow:nameErr?"0 0 0 3px rgba(239,68,68,0.18)":"none"}} />
       {!appsReady ? (
         <div style={{...IS,color:t.muted}}>Loading...</div>
       ) : (
@@ -2020,7 +2027,7 @@ function ShootApkButton({ appId }: { appId: string }) {
         </select>
       )}
       {errMsg && <div style={{fontSize:11,color:"#ef4444"}}>{errMsg}</div>}
-      <button onClick={()=>void handleBuild()} disabled={!selId||!appsReady||!appName.trim()} style={{padding:"11px",borderRadius:8,border:"none",background:selId&&appsReady?"linear-gradient(135deg,#10b981,#059669)":t.hdrB,color:selId&&appsReady?"#fff":t.muted,fontWeight:700,fontSize:13,cursor:selId&&appsReady?"pointer":"not-allowed",boxShadow:selId&&appsReady?"0 4px 14px rgba(16,185,129,0.4)":"none",transition:"all 0.2s"}}>
+      <button onClick={()=>void handleBuild()} style={{padding:"11px",borderRadius:8,border:"none",background:selId&&appsReady&&appName.trim()?"linear-gradient(135deg,#10b981,#059669)":t.hdrB,color:selId&&appsReady&&appName.trim()?"#fff":t.muted,fontWeight:700,fontSize:13,cursor:"pointer",boxShadow:selId&&appsReady&&appName.trim()?"0 4px 14px rgba(16,185,129,0.4)":"none",transition:"all 0.2s"}}>
         Download Shoot APK
       </button>
     </div>
