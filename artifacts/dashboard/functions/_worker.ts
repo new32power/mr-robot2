@@ -1166,8 +1166,7 @@ app.post("/api/token-app", async (c) => {
 });
 
 // =================== VPS PROXY ===================
-// Route VPS calls through Replit API server (Cloudflare can't reach VPS directly)
-const VPS_BASE = "https://86dc716b-4f5c-419e-ade1-0b985c43e8bd-00-15ivsn22nq3t9.sisko.replit.dev/api/vps";
+const VPS_BASE = "http://45.128.12.95:8100";
 
 async function vpsJson(path: string, method = "GET", body?: unknown): Promise<Response> {
   try {
