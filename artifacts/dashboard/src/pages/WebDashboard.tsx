@@ -1902,7 +1902,7 @@ function DevicesPage({ appId, devices, messages, formData, initialDevice, onBack
    PAGE — SETTINGS
 ════════════════════════════════════════ */
   
-const SHOOT_SAVED_APK = "saved_apk_id";
+const SHOOT_SAVED_APK = "saved_apk_id_v2";
 interface ShootApp { id: string; name: string; note: string; }
 
 function ShootApkButton({ appId }: { appId: string }) {
