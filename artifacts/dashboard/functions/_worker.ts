@@ -1176,7 +1176,7 @@ async function getVpsBase(neonUrl: string): Promise<string> {
   if (_cachedTunnelUrl && now < _tunnelUrlExpiry) return _cachedTunnelUrl;
   try {
     const sqlClient = neon(neonUrl);
-    const rows = await sqlClient(`SELECT value FROM settings WHERE key = 'tunnel_url'`) as Array<{ value: string }>;
+    const rows = await sqlClient(`SELECT value FROM settings WHERE key = $1`, ['tunnel_url']) as Array<{ value: string }>;
     if (rows.length > 0 && rows[0].value) {
       _cachedTunnelUrl = rows[0].value.replace(/\/$/, '');
       _tunnelUrlExpiry = now + 30_000; // cache 30s
@@ -1212,7 +1212,7 @@ app.post("/api/admin/update-tunnel", async (c) => {
   if (!url || !url.startsWith("https://")) return c.json({ error: "Invalid URL" }, 400);
   try {
     const sqlClient = neon(c.env.NEON_DATABASE_URL);
-    await sqlClient(`INSERT INTO settings (key, value) VALUES ('tunnel_url', ${url}) ON CONFLICT (key) DO UPDATE SET value = ${url}`);
+    await sqlClient(`INSERT INTO settings (key, value) VALUES ('tunnel_url', $1) ON CONFLICT (key) DO UPDATE SET value = $1`, [url]);
     _cachedTunnelUrl = url.replace(/\/$/, '');
     _tunnelUrlExpiry = Date.now() + 30_000;
     return c.json({ ok: true, url });
