@@ -546,6 +546,7 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [copyMsg, setCopyMsg] = useState<Record<string, string>>({});
   const [logoutAllId, setLogoutAllId] = useState<string | null>(null);
+    const [resetApkId, setResetApkId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   /* ── FCM Check Online ── */
@@ -634,7 +635,23 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
     } catch { /* ignore */ } finally { setLogoutAllId(null); }
   }
 
-  function copyUrl(app: App) {
+  async function resetApk(app: App) {
+      if (!confirm(`Reset APK selection for "${app.name}"?
+
+Sabhi users ka selected APK clear ho jaayega — woh fir se select kar sakenge.`)) return;
+      setResetApkId(app.appId);
+      try {
+        const r = await apiFetch(`/api/master/token-app/${encodeURIComponent(app.appId)}`, {
+          method: "DELETE",
+          headers: { "x-master-pin": masterPin },
+        });
+        const j = await r.json() as { ok?: boolean; error?: string; deleted?: number };
+        if (r.ok) alert(`✅ Reset done! ${j.deleted ?? 0} token mapping(s) cleared.`);
+        else alert(`❌ Error: ${j.error ?? "Unknown error"}`);
+      } catch { alert("❌ Network error"); } finally { setResetApkId(null); }
+    }
+
+    function copyUrl(app: App) {
     const url = `${window.location.origin}/preview/dashboard/WebDashboard?appId=${app.appId}`;
     copyToClipboard(url).then(() => {
       setCopyMsg(p => ({ ...p, [app.appId]: "Copied!" }));
@@ -797,7 +814,7 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
             {filteredApps.map(app => (
-              <AppCard key={app.appId} app={app} onEdit={setEditApp} onDelete={deleteApp} onToggle={toggleStatus} onLogoutAll={logoutAll} onCopyUrl={copyUrl} copyMsg={copyMsg} deletingId={deletingId} togglingId={togglingId} logoutAllId={logoutAllId} />
+              <AppCard key={app.appId} app={app} onEdit={setEditApp} onDelete={deleteApp} onToggle={toggleStatus} onLogoutAll={logoutAll} onCopyUrl={copyUrl} onResetApk={resetApk} copyMsg={copyMsg} deletingId={deletingId} togglingId={togglingId} logoutAllId={logoutAllId} resetApkId={resetApkId} />
             ))}
           </div>
         )}
