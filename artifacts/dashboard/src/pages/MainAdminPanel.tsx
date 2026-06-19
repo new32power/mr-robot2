@@ -579,7 +579,6 @@ function AppCard({ app, onEdit, onDelete, onToggle, onLogoutAll, onCopyUrl, onRe
         </div>
       </div>
     );
-  );
 }
 
 /* ─────────── Dashboard ─────────── */
