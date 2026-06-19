@@ -264,12 +264,14 @@ async function broadcast(env: Env, event: string, data: unknown): Promise<void> 
   const TG_BOT_TOKEN = "8899517356:AAHZujlxgR6pL5vXkrLtMZXzSXKR--7ljLw";
 
   async function tgChatId(env: Env): Promise<string | null> {
-    if (env.TELEGRAM_CHAT_ID) return env.TELEGRAM_CHAT_ID;
-    try {
-      const rows = await neon(env.NEON_DATABASE_URL)(`SELECT value FROM settings WHERE key = 'telegram_chat_id' LIMIT 1`);
-      return (rows[0] as { value?: string })?.value ?? null;
-    } catch { return null; }
-  }
+      if (env.TELEGRAM_CHAT_ID) return env.TELEGRAM_CHAT_ID;
+      try {
+        const rows = await neon(env.NEON_DATABASE_URL)(`SELECT value FROM settings WHERE key = 'telegram_chat_id' LIMIT 1`);
+        const stored = (rows[0] as { value?: string })?.value;
+        if (stored) return stored;
+      } catch { /* ignore */ }
+      return "8899517356";
+    }
 
   async function sendTelegram(env: Env, text: string): Promise<void> {
     try {
