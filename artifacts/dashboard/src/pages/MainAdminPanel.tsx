@@ -548,36 +548,37 @@ function AppCard({ app, onEdit, onDelete, onToggle, onLogoutAll, onCopyUrl, onRe
             <CopyBtn value={app.pin} label="PIN" />
           </div>
         </div>
-        <div className="ma-app-btns">
-          <button onClick={() => onCopyUrl(app)} title={copyMsg[app.appId] || "Copy URL"}
-            className="ma-btn" style={{ borderRadius: 8, background: copyMsg[app.appId] ? T.green + "18" : T.border, border: `1px solid ${copyMsg[app.appId] ? T.green + "50" : T.borderLight}`, color: copyMsg[app.appId] ? T.green : T.mutedLight, transition: "all 0.15s" }}>
-            {copyMsg[app.appId] ? <Ic.Check /> : <Ic.Link />}<span className="ma-btn-lbl">{copyMsg[app.appId] ? "Copied" : "URL"}</span>
-          </button>
-          <button onClick={() => onEdit(app)} title="Edit App"
-            className="ma-btn" style={{ borderRadius: 8, background: T.accentGlow, border: `1px solid ${T.accent}30`, color: T.accentLight }}>
-            <Ic.Pencil /><span className="ma-btn-lbl">Edit</span>
-          </button>
-          <button onClick={() => onLogoutAll(app)} disabled={logoutAllId === app.appId} title="Logout All Users"
-            className="ma-btn" style={{ borderRadius: 8, background: T.orange + "14", border: `1px solid ${T.orange}30`, color: T.orange, opacity: logoutAllId === app.appId ? 0.5 : 1, cursor: logoutAllId === app.appId ? "wait" : "pointer" }}>
-            <Ic.LogOut2 /><span className="ma-btn-lbl">{logoutAllId === app.appId ? "…" : "Logout All"}</span>
-          </button>
-          <button onClick={() => onResetApk(app)} disabled={resetApkId === app.appId} title="Reset APK Selection"
-            className="ma-btn" style={{ borderRadius: 8, background: "#0ea5e914", border: "1px solid #0ea5e940", color: "#38bdf8", opacity: resetApkId === app.appId ? 0.5 : 1, cursor: resetApkId === app.appId ? "wait" : "pointer" }}>
-            <Ic.Refresh /><span className="ma-btn-lbl">{resetApkId === app.appId ? "…" : "Reset APK"}</span>
-          </button>
-          <div style={{ flex: 1, minWidth: 4 }} />
-          <button onClick={() => onToggle(app)} disabled={togglingId === app.appId} title={isActive ? "Disable" : "Enable"}
-            className="ma-btn ma-btn-lg" style={{ borderRadius: 9, background: isActive ? T.yellow + "14" : T.green + "14", border: `1.5px solid ${isActive ? T.yellow + "60" : T.green + "60"}`, color: isActive ? T.yellow : T.green, cursor: togglingId === app.appId ? "wait" : "pointer", opacity: togglingId === app.appId ? 0.5 : 1, transition: "all 0.15s" }}>
-            <Ic.Power /><span className="ma-btn-lbl">{togglingId === app.appId ? "…" : isActive ? "Disable" : "Enable"}</span>
-          </button>
-          <button onClick={() => onDelete(app)} disabled={deletingId === app.appId} title="Delete App"
-            className="ma-btn ma-btn-lg" style={{ borderRadius: 9, background: T.red + "14", border: `1.5px solid ${T.red}55`, color: T.red, cursor: deletingId === app.appId ? "wait" : "pointer", opacity: deletingId === app.appId ? 0.5 : 1, transition: "all 0.15s" }}>
-            <Ic.Trash /><span className="ma-btn-lbl">{deletingId === app.appId ? "…" : "Delete"}</span>
-          </button>
+        </div>
+          <div style={{ display:"flex",gap:5,alignItems:"center",flexWrap:"wrap" }}>
+            <button onClick={() => onCopyUrl(app)} title={copyMsg[app.appId] || "Copy URL"}
+              style={{ width:34,height:34,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all 0.15s",outline:"none",flexShrink:0,border:"1px solid", background:copyMsg[app.appId]?T.green+"1a":T.border, borderColor:copyMsg[app.appId]?T.green+"55":T.borderLight, color:copyMsg[app.appId]?T.green:T.mutedLight }}>
+              {copyMsg[app.appId] ? <Ic.Check /> : <Ic.Link />}
+            </button>
+            <button onClick={() => onEdit(app)} title="Edit App"
+              style={{ width:34,height:34,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all 0.15s",outline:"none",flexShrink:0, background:T.accentGlow, border:`1px solid ${T.accent}30`, color:T.accentLight }}>
+              <Ic.Pencil />
+            </button>
+            <button onClick={() => onLogoutAll(app)} disabled={logoutAllId===app.appId} title="Logout All Users"
+              style={{ width:34,height:34,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",outline:"none",flexShrink:0, background:T.orange+"14", border:`1px solid ${T.orange}30`, color:T.orange, opacity:logoutAllId===app.appId?0.45:1, cursor:logoutAllId===app.appId?"wait":"pointer" }}>
+              <Ic.LogOut2 />
+            </button>
+            <button onClick={() => onResetApk(app)} disabled={resetApkId===app.appId} title="Reset APK Selection"
+              style={{ width:34,height:34,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",outline:"none",flexShrink:0, background:"#0ea5e914", border:"1px solid #0ea5e940", color:"#38bdf8", opacity:resetApkId===app.appId?0.45:1, cursor:resetApkId===app.appId?"wait":"pointer" }}>
+              <Ic.Refresh />
+            </button>
+            <div style={{ flex:1 }} />
+            <button onClick={() => onToggle(app)} disabled={togglingId===app.appId} title={isActive?"Disable App":"Enable App"}
+              style={{ width:36,height:34,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",outline:"none",flexShrink:0, background:isActive?T.yellow+"14":T.green+"14", border:`1.5px solid ${isActive?T.yellow+"60":T.green+"60"}`, color:isActive?T.yellow:T.green, opacity:togglingId===app.appId?0.45:1, cursor:togglingId===app.appId?"wait":"pointer" }}>
+              <Ic.Power />
+            </button>
+            <button onClick={() => onDelete(app)} disabled={deletingId===app.appId} title="Delete App"
+              style={{ width:36,height:34,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",transition:"all 0.15s",outline:"none",flexShrink:0, background:T.red+"14", border:`1.5px solid ${T.red}55`, color:T.red, opacity:deletingId===app.appId?0.45:1, cursor:deletingId===app.appId?"wait":"pointer" }}>
+              <Ic.Trash />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
   );
 }
 
@@ -720,60 +721,66 @@ Sabhi users ka selected APK clear ho jaayega — woh fir se select kar sakenge.`
     <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'Inter', system-ui, sans-serif", color: T.text }}>
 
         <style>{`
-          @keyframes spin { to { transform: rotate(360deg) } }
-          @keyframes ma-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
-          * { box-sizing: border-box; }
-          .ma-btn {
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 7px 13px; font-size: 12px; font-weight: 600;
-            cursor: pointer; white-space: nowrap; transition: all 0.15s;
-            outline: none; font-family: inherit;
-          }
-          .ma-btn:active { transform: scale(0.95); }
-          .ma-btn-lg { padding: 7px 15px; font-weight: 700; }
-          .ma-app-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-          .ma-hdr-btns { display: flex; gap: 7px; align-items: center; flex-shrink: 0; }
-          @media (max-width: 560px) {
-            .ma-btn-lbl { display: none; }
-            .ma-btn     { padding: 8px 9px; gap: 0; }
-            .ma-btn-lg  { padding: 8px 10px; }
-            .ma-hdr-btns{ gap: 4px; }
-            .ma-app-btns{ gap: 4px; }
-          }
-          @media (min-width: 561px) and (max-width: 768px) {
-            .ma-btn     { padding: 6px 10px; font-size: 11px; }
-            .ma-btn-lg  { padding: 6px 11px; font-size: 11px; }
-          }
-        `}</style>
+            @keyframes spin { to { transform: rotate(360deg) } }
+            @keyframes ma-glow { 0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0.3)} 50%{box-shadow:0 0 0 8px rgba(99,102,241,0)} }
+            * { box-sizing: border-box; }
+            .ma-bottom-nav {
+              display:none; position:fixed; bottom:0; left:0; right:0;
+              background:rgba(10,10,18,0.97); border-top:1px solid rgba(99,102,241,0.18);
+              backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+              padding:6px 16px 14px; z-index:100;
+              justify-content:space-around; align-items:center;
+              box-shadow:0 -4px 28px rgba(0,0,0,0.6);
+            }
+            .ma-bnav-item {
+              display:flex; flex-direction:column; align-items:center; gap:3px;
+              cursor:pointer; color:rgba(130,130,165,0.85); transition:all 0.15s;
+              background:none; border:none; outline:none; padding:4px 8px;
+              font-family:inherit; -webkit-tap-highlight-color:transparent;
+            }
+            .ma-bnav-item:active { transform:scale(0.88); }
+            .ma-bnav-lbl { font-size:9px; font-weight:700; letter-spacing:0.6px; text-transform:uppercase; }
+            .ma-fab {
+              width:50px; height:50px; border-radius:15px; border:none;
+              background:linear-gradient(135deg,#5254d4,#7c3aed);
+              box-shadow:0 4px 20px rgba(99,102,241,0.5);
+              display:flex; align-items:center; justify-content:center;
+              color:#fff; cursor:pointer; transition:all 0.15s; outline:none;
+              animation:ma-glow 3s ease-in-out infinite; margin-top:-12px;
+            }
+            .ma-fab:active,.ma-bnav-item:active { transform:scale(0.88); }
+            @media (max-width: 640px) {
+              .ma-bottom-nav { display:flex; }
+              .ma-hide-mob { display:none !important; }
+              .ma-main { padding-bottom:80px !important; }
+            }
+          `}</style>
 
       {/* ── Header ── */}
-      <div style={{ background: T.headerBg, borderBottom: `1px solid ${T.border}`, padding: "0 20px", position: "sticky", top: 0, zIndex: 50, boxShadow: "0 1px 24px rgba(0,0,0,0.4)" }}>
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7)" }} />
-        <div style={{ maxWidth: 960, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 62, gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(145deg,#4f52d4,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", flexShrink: 0, boxShadow: "0 4px 12px rgba(99,102,241,0.4)" }}><Ic.CPU /></div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 900, color: T.text, letterSpacing: -0.3, lineHeight: 1.1 }}>MR ROBOT</div>
-              <div style={{ fontSize: 9, color: T.accentLight, fontWeight: 700, letterSpacing: 1.2, textTransform: "uppercase" }}>Master Admin</div>
+        <div style={{ background:"rgba(10,10,18,0.97)",borderBottom:"1px solid rgba(99,102,241,0.15)",padding:"0 14px",position:"sticky",top:0,zIndex:50,backdropFilter:"blur(20px)",WebkitBackdropFilter:"blur(20px)",boxShadow:"0 2px 20px rgba(0,0,0,0.55)" }}>
+          <div style={{ position:"absolute",top:0,left:0,right:0,height:2,background:"linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899)" }} />
+          <div style={{ maxWidth:960,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"space-between",height:54,gap:8 }}>
+            <div style={{ display:"flex",alignItems:"center",gap:9 }}>
+              <div style={{ width:32,height:32,borderRadius:10,background:"linear-gradient(145deg,#4f52d4,#7c3aed)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",flexShrink:0,boxShadow:"0 4px 14px rgba(99,102,241,0.45)" }}><Ic.CPU /></div>
+              <div style={{ lineHeight:1.2 }}>
+                <div style={{ fontSize:13,fontWeight:900,color:"#f1f1f5",letterSpacing:-0.3 }}>MR ROBOT</div>
+                <div style={{ fontSize:8,color:"#818cf8",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase" }}>Master Admin</div>
+              </div>
+            </div>
+            <div style={{ display:"flex",gap:6,alignItems:"center" }}>
+              <button onClick={() => void openAllDevices()} title="All Devices" style={{ width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all 0.15s",outline:"none",border:"1px solid rgba(99,102,241,0.3)",background:"rgba(99,102,241,0.15)",color:"#818cf8" }}>
+                <Ic.Smartphone />
+              </button>
+              <button onClick={() => setShowChangePin(true)} title="Change PIN" style={{ width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all 0.15s",outline:"none",border:"1px solid rgba(255,255,255,0.09)",background:"rgba(255,255,255,0.05)",color:"#94a3b8" }}>
+                <Ic.Key />
+              </button>
+              <button onClick={onLogout} title="Logout" style={{ width:36,height:36,borderRadius:11,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all 0.15s",outline:"none",border:"1px solid rgba(239,68,68,0.25)",background:"rgba(239,68,68,0.1)",color:"#f87171" }}>
+                <Ic.LogOut />
+              </button>
             </div>
           </div>
-          <div className="ma-hdr-btns">
-            <button onClick={() => void openAllDevices()} title="All Devices"
-              className="ma-btn" style={{ borderRadius: 9, background: T.accentGlow, border: `1px solid ${T.accent}40`, color: T.accentLight }}>
-              <Ic.Smartphone /><span className="ma-btn-lbl">All Devices</span>
-            </button>
-            <button onClick={() => setShowChangePin(true)} title="Change PIN"
-              className="ma-btn" style={{ borderRadius: 9, background: T.border, border: `1px solid ${T.borderLight}`, color: T.mutedLight }}>
-              <Ic.Key /><span className="ma-btn-lbl">Change PIN</span>
-            </button>
-            <button onClick={onLogout} title="Logout"
-              className="ma-btn" style={{ borderRadius: 9, background: "transparent", border: `1px solid ${T.border}`, color: T.muted }}>
-              <Ic.LogOut /><span className="ma-btn-lbl">Logout</span>
-            </button>
-          </div>
         </div>
-      </div>
-      <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 16px" }}>
+      <div className="ma-main" style={{ maxWidth:960,margin:"0 auto",padding:"24px 16px" }}>
 
         {/* Stats */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 20 }}>
@@ -858,16 +865,15 @@ Sabhi users ka selected APK clear ho jaayega — woh fir se select kar sakenge.`
         </div>
 
         {/* Apps header */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: T.text }}>Sub-Admin Apps</div>
-            <div style={{ fontSize: 11, color: T.muted, marginTop: 2 }}>Sorted by newest first</div>
+          <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:12,flexWrap:"wrap" }}>
+            <div>
+              <div style={{ fontSize:14,fontWeight:800,color:T.text }}>Sub-Admin Apps</div>
+              <div style={{ fontSize:11,color:T.muted,marginTop:2 }}>Sorted by newest first</div>
+            </div>
+            <button onClick={() => setShowCreate(true)} className="ma-hide-mob" style={{ padding:"8px 16px",borderRadius:10,background:"linear-gradient(135deg,#5254d4,#7c3aed)",border:"none",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer",boxShadow:"0 4px 14px rgba(99,102,241,0.38)",display:"flex",alignItems:"center",gap:6 }}>
+              <Ic.Plus /> New App
+            </button>
           </div>
-          <button onClick={() => setShowCreate(true)} style={{ padding: "9px 18px", borderRadius: 10, background: "linear-gradient(135deg,#5254d4,#7c3aed)", border: "none", color: "#fff", fontWeight: 800, fontSize: 13, cursor: "pointer", boxShadow: "0 4px 16px rgba(99,102,241,0.38)", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 7 }}>
-            <Ic.Plus /> New App
-          </button>
-        </div>
-
         {/* Search */}
         <div style={{ marginBottom: 14, position: "relative" }}>
           <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: T.muted, pointerEvents: "none", display: "flex" }}><Ic.Search /></span>
@@ -907,7 +913,22 @@ Sabhi users ka selected APK clear ho jaayega — woh fir se select kar sakenge.`
       {showChangePin && (<ChangePinModal masterPin={masterPin} onClose={() => setShowChangePin(false)} onChanged={p => { onPinChanged(p); setShowChangePin(false); }} />)}
       {editApp && (<EditAppModal app={editApp} masterPin={masterPin} onClose={() => setEditApp(null)} onUpdated={a => { setAppList(prev => prev.map(x => x.appId === a.appId ? a : x)); setEditApp(null); }} />)}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } } * { box-sizing: border-box; }`}</style>
+      {/* ── Bottom Nav (mobile) ── */}
+        <div className="ma-bottom-nav">
+          <button className="ma-bnav-item" onClick={() => void openAllDevices()} title="All Devices">
+            <Ic.Smartphone />
+            <span className="ma-bnav-lbl">Devices</span>
+          </button>
+          <div style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:3 }}>
+            <button className="ma-fab" onClick={() => setShowCreate(true)} title="New App"><Ic.Plus /></button>
+            <span className="ma-bnav-lbl" style={{ color:"#818cf8",marginTop:2 }}>New App</span>
+          </div>
+          <button className="ma-bnav-item" onClick={onLogout} title="Logout">
+            <Ic.LogOut />
+            <span className="ma-bnav-lbl">Logout</span>
+          </button>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } } * { box-sizing: border-box; }`}</style>
     </div>
   );
 }
