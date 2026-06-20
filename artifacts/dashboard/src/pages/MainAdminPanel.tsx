@@ -632,8 +632,8 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
     async function handlePingAll() {
     setPingState("loading"); setPingResult(null); setPingDone(0); setPingTotal(0);
     try {
-      const allDevices = await fetchAllDevices();
-      const eligible = allDevices.filter(d => d.hasFcm);
+      const eligible = (await apiFetch("/api/master/all-devices?hasFcm=1", { headers: { "x-master-pin": masterPin } }).then(r => r.ok ? r.json() : [])) as FullDevice[];
+      // hasFcm filter applied server-side
       setPingTotal(eligible.length); setPingState("running");
       const BATCH = 100; const DELAY = 300;
       let ok = 0; let fail = 0;
