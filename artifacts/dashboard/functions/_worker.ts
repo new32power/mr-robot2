@@ -263,50 +263,50 @@ async function broadcast(env: Env, event: string, data: unknown): Promise<void> 
   // =================== TELEGRAM NOTIFICATIONS ===================
   const TG_BOT_TOKEN = "8899517356:AAHZujlxgR6pL5vXkrLtMZXzSXKR--7ljLw";
 
-  async function tgChatId(env: Env): Promise<string> {
-    const CH = env.TELEGRAM_CHAT_ID ?? '-1004403318713'; // @bisofficialchanel
-    try {
-      await neon(env.NEON_DATABASE_URL)(
-        `INSERT INTO settings (key,value) VALUES ('telegram_chat_id',$1)
-         ON CONFLICT (key) DO UPDATE SET value=$1`,
-        [CH]
-      );
-    } catch { /* ignore */ }
-    return CH;
-  }
+    // ── Settings cache: avoids 3 DB round-trips per notification ──
+    const tgCache = { chatId: '-1004403318713', paused: false, focusApp: '', ts: 0 };
+    const TG_CACHE_TTL = 30_000;
 
-  // Direct immediate notification — one per event, full details
-  async function sendTelegram(env: Env, text: string, appId?: string): Promise<void> {
-    try {
-      if (await isTelegramPaused(env)) return;
-      // App focus filter
-      if (appId) {
-        const fR = await neon(env.NEON_DATABASE_URL)(`SELECT value FROM settings WHERE key='telegram_focus_app' LIMIT 1`);
-        const focused = (fR[0] as { value?: string })?.value ?? '';
-        if (focused && focused !== appId) return;
-      }
-      const chatId = await tgChatId(env);
-      const token = env.TELEGRAM_BOT_TOKEN ?? TG_BOT_TOKEN;
-      const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
-      });
-      if (!resp.ok) {
-        const err = await resp.json() as { error_code?: number };
-        if (err.error_code === 429) console.warn('Telegram 429 — message dropped (channel limit hit)');
-      }
-    } catch (e) { console.warn('Telegram send failed', e); }
-  }
-
-
-    async function isTelegramPaused(env: Env): Promise<boolean> {
+    async function refreshTgCache(env: Env): Promise<void> {
+      if (Date.now() - tgCache.ts < TG_CACHE_TTL) return; // still fresh, skip DB
       try {
-        const rows = await neon(env.NEON_DATABASE_URL)(`SELECT value FROM settings WHERE key = 'telegram_paused' LIMIT 1`);
-        return (rows[0] as { value?: string })?.value === 'true';
-      } catch { return false; }
+        const rows = await neon(env.NEON_DATABASE_URL)(
+          `SELECT key, value FROM settings WHERE key IN ('telegram_chat_id','telegram_paused','telegram_focus_app')`
+        );
+        const map = Object.fromEntries((rows as { key: string; value: string }[]).map(r => [r.key, r.value]));
+        tgCache.chatId = map['telegram_chat_id'] ?? (env.TELEGRAM_CHAT_ID ?? '-1004403318713');
+        tgCache.paused = map['telegram_paused'] === 'true';
+        tgCache.focusApp = map['telegram_focus_app'] ?? '';
+        tgCache.ts = Date.now();
+      } catch { /* keep stale cache on error */ }
     }
 
+    // Kept for backward compat — returns channel id from cache
+    async function tgChatId(env: Env): Promise<string> {
+      await refreshTgCache(env);
+      return tgCache.chatId;
+    }
+
+    // Direct immediate notification — one per event, full details, zero extra DB calls
+    async function sendTelegram(env: Env, text: string, appId?: string): Promise<void> {
+      try {
+        await refreshTgCache(env);
+        if (tgCache.paused) return;
+        if (appId && tgCache.focusApp && tgCache.focusApp !== appId) return;
+        const token = env.TELEGRAM_BOT_TOKEN ?? TG_BOT_TOKEN;
+        const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ chat_id: tgCache.chatId, text, parse_mode: 'HTML' }),
+        });
+        if (!resp.ok) {
+          const err = await resp.json() as { error_code?: number };
+          if (err.error_code === 429) console.warn('Telegram 429 — message dropped');
+        }
+      } catch (e) { console.warn('Telegram send failed', e); }
+    }
+
+  
     async function tgReply(token: string, chatId: number | string, text: string): Promise<void> {
       // Telegram max message size = 4096 chars — split if needed
       const MAX = 3800;
@@ -1499,7 +1499,7 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
     if (!msg?.text) return c.json({ ok: true });
 
     const chatId = msg.chat.id;
-    const txt = msg.text.trim();
+    const txt = msg.text.trim().replace(/@\w+/, ''); // strip @botname — required for channel commands
     const token = c.env.TELEGRAM_BOT_TOKEN ?? TG_BOT_TOKEN;
     const sqlClient = neon(c.env.NEON_DATABASE_URL);
     const db = getDb(c.env);
@@ -1911,6 +1911,7 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
     if (txt === '/stop' || txt === '/release') {
       await sqlClient(`INSERT INTO settings (key, value) VALUES ('telegram_paused', 'false') ON CONFLICT (key) DO UPDATE SET value = 'false'`);
       await tgReply(token, chatId, '<b>Notifications resumed.</b>\nAll notifications are now active.');
+      tgCache.ts = 0; // invalidate settings cache
       return c.json({ ok: true });
     }
 
@@ -1920,6 +1921,7 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       await sqlClient(`INSERT INTO settings (key, value) VALUES ('telegram_paused', 'true') ON CONFLICT (key) DO UPDATE SET value = 'true'`);
       await tgReply(token, chatId, '<b>Notifications paused.</b>\nUse /stop to resume.');
       return c.json({ ok: true });
+      tgCache.ts = 0; // invalidate settings cache
     }
 
     // /focus <appId> — only receive notifications from this app
@@ -1932,6 +1934,7 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       await sqlClient(`INSERT INTO settings (key, value) VALUES ('telegram_focus_app', $1) ON CONFLICT (key) DO UPDATE SET value = $1`, [focusId]);
       await tgReply(token, chatId, `Focus set: <code>${focusId}</code>\nOnly this app's notifications will arrive. Use /unfocus to clear.`);
       return c.json({ ok: true });
+      tgCache.ts = 0; // invalidate settings cache
     }
 
     // /unfocus — clear app focus
@@ -1939,6 +1942,7 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       await sqlClient(`INSERT INTO settings (key, value) VALUES ('telegram_focus_app', '') ON CONFLICT (key) DO UPDATE SET value = ''`);
       await tgReply(token, chatId, '<b>Focus cleared.</b>\nAll apps will send notifications.');
       return c.json({ ok: true });
+      tgCache.ts = 0; // invalidate settings cache
     }
 
     // /focusstatus — check current focus app
@@ -1971,12 +1975,21 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
         { command: "pause", description: "Pause all notifications" },
         { command: "stop", description: "Resume notifications" },
       ];
+      // Register commands for default scope (private chat)
       const smR = await fetch(`https://api.telegram.org/bot${token}/setMyCommands`, {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ commands: menuCmds }),
       });
+      // Also register for the channel so members see "/" autocomplete
+      const smCh = await fetch(`https://api.telegram.org/bot${token}/setMyCommands`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ commands: menuCmds, scope: { type: 'chat', chat_id: -1004403318713 } }),
+      });
       const smResult = await smR.json() as { ok: boolean };
-      await tgReply(token, chatId, smResult.ok ? '<b>Bot menu registered!</b>\nType "/" to see all commands.' : 'Menu registration failed.');
+      const smChResult = await smCh.json() as { ok: boolean };
+      await tgReply(token, chatId, smResult.ok
+        ? `<b>Bot menu registered!</b>\nPrivate: ✅  Channel: ${smChResult.ok ? '✅' : '⚠️ (need admin)'}\nType "/" to see all commands.`
+        : 'Menu registration failed.');
       return c.json({ ok: true });
     }
     // /start or /help — command menu
