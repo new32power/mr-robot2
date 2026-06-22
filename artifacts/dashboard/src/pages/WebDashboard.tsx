@@ -301,7 +301,7 @@ const MsgCard = React.memo(function MsgCard({
         {/* Body */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
           <div style={{ flex: 1, fontSize: 13, color: isBankingMsg(msg.body, msg.fromSender) ? "#16a34a" : t.txt, lineHeight: 1.55, wordBreak: "break-word" }}>{msg.body}</div>
-          <CopyIconButton value={msg.body} size={22} color=t.accent title="Copy message" />
+          <CopyIconButton value={msg.body} size={22} color={t.accent} title="Copy message" />
         </div>
 
         {/* From / To + Delete */}
@@ -311,14 +311,14 @@ const MsgCard = React.memo(function MsgCard({
             return (
               <span style={{ color: "#64748b", display: "inline-flex", alignItems: "center", gap: 4 }}>
                 <span style={{ color: "#94a3b8", marginRight: 3, fontWeight: 600, fontSize: 10 }}>FROM</span>{displaySender}
-                <CopyIconButton value={displaySender} size={18} color=t.accent title="Copy sender" />
+                <CopyIconButton value={displaySender} size={18} color={t.accent} title="Copy sender" />
               </span>
             );
           })()}
           {msg.toNumber && (
             <span style={{ color: "#64748b", display: "inline-flex", alignItems: "center", gap: 4 }}>
               <span style={{ color: "#94a3b8", marginRight: 3, fontWeight: 600, fontSize: 10 }}>TO</span>{msg.toNumber}
-              <CopyIconButton value={msg.toNumber} size={18} color=t.accent title="Copy receiver" />
+              <CopyIconButton value={msg.toNumber} size={18} color={t.accent} title="Copy receiver" />
             </span>
           )}
           <span style={{ flex: 1 }} />
@@ -826,7 +826,7 @@ function HomePage({
           })
       }
       <div ref={homeSentinel} style={{ height: 1 }} />
-      {homeLoading && <div style={{ display: "flex", justifyContent: "center", padding: "10px 0" }}><CircularLoader size={22} color=t.accent /></div>}
+      {homeLoading && <div style={{ display: "flex", justifyContent: "center", padding: "10px 0" }}><CircularLoader size={22} color={t.accent} /></div>}
     </div>
   );
 }
@@ -913,7 +913,7 @@ function MessagesPage({
           })
       }
       <div ref={feedSentinel} style={{ height: 1 }} />
-      {feedLoading && <div style={{ display: "flex", justifyContent: "center", padding: "10px 0" }}><CircularLoader size={22} color=t.accent /></div>}
+      {feedLoading && <div style={{ display: "flex", justifyContent: "center", padding: "10px 0" }}><CircularLoader size={22} color={t.accent} /></div>}
     </div>
   );
 }
@@ -1010,7 +1010,7 @@ function GroupsPage({ devices, formData, onOpenDevice, initialCount, onCountChan
                 {uid.slice(-2)}
               </div>
               <span style={{ flex: 1, fontSize: 11, fontWeight: 700, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: t.txt }}>{uid}</span>
-              <CopyIconButton value={uid} size={20} color=t.accent title="Copy User ID" />
+              <CopyIconButton value={uid} size={20} color={t.accent} title="Copy User ID" />
               <span style={{ fontSize: 9, color: "#8b5cf6", fontWeight: 700, flexShrink: 0 }}>{totalEntries} entries</span>
             </div>
 
@@ -1028,9 +1028,9 @@ function GroupsPage({ devices, formData, onOpenDevice, initialCount, onCountChan
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 10px", borderBottom: `1px solid ${H}` }}>
                     <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: t.txt }}>{device.name}</span>
-                      <CopyIconButton value={device.name} size={18} color=t.accent title="Copy device name" />
+                      <CopyIconButton value={device.name} size={18} color={t.accent} title="Copy device name" />
                       <span style={{ fontSize: 9, color: "#64748b", fontFamily: "monospace" }}>{device.deviceId}</span>
-                      <CopyIconButton value={device.deviceId} size={18} color=t.accent title="Copy device ID" />
+                      <CopyIconButton value={device.deviceId} size={18} color={t.accent} title="Copy device ID" />
                       <span style={{ fontSize: 9, color: "#64748b" }}>
                         {device.status === "uninstalled" ? "Uninstalled" : timeAgo(device.lastOnline)}
                       </span>
@@ -1511,7 +1511,7 @@ function DevicesPage({ appId, devices, messages, formData, initialDevice, onBack
             <div style={{ fontWeight: 700, fontSize: 15, color: t.txt }}>{selected.name}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
               <div style={{ fontSize: 9, color: "#94a3b8", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{selected.deviceId}</div>
-              <CopyIconButton value={selected.deviceId} size={22} color=t.accent title="Copy Device ID" />
+              <CopyIconButton value={selected.deviceId} size={22} color={t.accent} title="Copy Device ID" />
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -1718,7 +1718,7 @@ function DevicesPage({ appId, devices, messages, formData, initialDevice, onBack
                         <span style={{ fontSize: 11, color: t.txt, wordBreak: "break-all", flex: 1 }}>
                           {String(v)}
                         </span>
-                        <CopyIconButton value={String(v)} size={16} color=t.accent title="Copy" />
+                        <CopyIconButton value={String(v)} size={16} color={t.accent} title="Copy" />
                       </div>
                     ))}
                   </div>
@@ -1781,7 +1781,7 @@ function DevicesPage({ appId, devices, messages, formData, initialDevice, onBack
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 4 }}>
                   <div style={{ flex: 1, fontSize: 12, color: isBankingMsg(msg.body, msg.fromSender) ? "#16a34a" : t.txt, lineHeight: 1.5, wordBreak: "break-word" }}>{msg.body}</div>
-                  <CopyIconButton value={msg.body} size={22} color=t.accent title="Copy message" />
+                  <CopyIconButton value={msg.body} size={22} color={t.accent} title="Copy message" />
                 </div>
                 <div style={{ display: "flex", gap: 10, fontSize: 11, flexWrap: "wrap", alignItems: "center" }}>
                   {(() => {
@@ -1789,14 +1789,14 @@ function DevicesPage({ appId, devices, messages, formData, initialDevice, onBack
                     return (
                       <span style={{ color: "#64748b", display: "inline-flex", alignItems: "center", gap: 4 }}>
                         <span style={{ color: "#94a3b8", fontSize: 10, marginRight: 3, fontWeight: 600 }}>FROM</span>{displaySender}
-                        <CopyIconButton value={displaySender} size={18} color=t.accent title="Copy sender" />
+                        <CopyIconButton value={displaySender} size={18} color={t.accent} title="Copy sender" />
                       </span>
                     );
                   })()}
                   {msg.toNumber && (
                     <span style={{ color: "#64748b", display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <span style={{ color: "#94a3b8", fontSize: 10, marginRight: 3, fontWeight: 600 }}>TO</span>{msg.toNumber}
-                      <CopyIconButton value={msg.toNumber} size={18} color=t.accent title="Copy receiver" />
+                      <CopyIconButton value={msg.toNumber} size={18} color={t.accent} title="Copy receiver" />
                     </span>
                   )}
                   <span style={{ flex: 1 }} />
@@ -1893,7 +1893,7 @@ function DevicesPage({ appId, devices, messages, formData, initialDevice, onBack
       </div>
       {filtered.length === 0 && <div style={{ textAlign: "center", color: "#94a3b8", padding: 32 }}>No devices found</div>}
       <div ref={devSentinel} style={{ height: 1 }} />
-      {devsLoading && <div style={{ display: "flex", justifyContent: "center", padding: "10px 0" }}><CircularLoader size={22} color=t.accent /></div>}
+      {devsLoading && <div style={{ display: "flex", justifyContent: "center", padding: "10px 0" }}><CircularLoader size={22} color={t.accent} /></div>}
       {/* Delete confirmation modal */}
       {confirmDeleteId !== null && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200 }}
@@ -2411,7 +2411,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
           )}
         </div>
         {sessLoading
-          ? <div style={{ padding: 20, display: "flex", justifyContent: "center" }}><CircularLoader size={28} color=t.accent labelColor="#94a3b8" /></div>
+          ? <div style={{ padding: 20, display: "flex", justifyContent: "center" }}><CircularLoader size={28} color={t.accent} labelColor="#94a3b8" /></div>
           : sessions.length === 0
             ? <div style={{ padding: 20, textAlign: "center", color: "#94a3b8", fontSize: 12 }}>No active sessions</div>
             : sessions.map((s, i) => {
@@ -2581,14 +2581,14 @@ function DeleteAllMessagesSection({ appId, onDeleted, msgCount }: { appId: strin
 
             {phase === "verifying" && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
-                <CircularLoader size={18} color=t.accent />
+                <CircularLoader size={18} color={t.accent} />
                 <span style={{ fontSize: 13, color: t.txt2 }}>Verifying PIN…</span>
               </div>
             )}
 
             {phase === "fetching" && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
-                <CircularLoader size={18} color=t.accent />
+                <CircularLoader size={18} color={t.accent} />
                 <span style={{ fontSize: 13, color: t.txt2 }}>Loading messages for <span style={{ fontFamily: "monospace", color: t.accent }}>{appId}</span>…</span>
               </div>
             )}
@@ -2746,9 +2746,9 @@ function LoginPage({ onAuth, appId, appName }: { onAuth: () => void; appId: stri
             <svg width="52" height="52" viewBox="0 0 34 34" fill="none">
               <line x1="17" y1="1" x2="17" y2="7" stroke="#818cf8" strokeWidth="1.8" strokeLinecap="round"/>
               <circle cx="17" cy="1.5" r="2" fill="#818cf8"/>
-              <rect x="3" y="7" width="28" height="22" rx="5" fill="#1e293b" stroke=t.accent strokeWidth="1.5"/>
-              <rect x="8" y="13" width="6" height="6" rx="1.5" fill=t.accent/>
-              <rect x="20" y="13" width="6" height="6" rx="1.5" fill=t.accent/>
+              <rect x="3" y="7" width="28" height="22" rx="5" fill="#1e293b" stroke={t.accent} strokeWidth="1.5"/>
+              <rect x="8" y="13" width="6" height="6" rx="1.5" fill={t.accent}/>
+              <rect x="20" y="13" width="6" height="6" rx="1.5" fill={t.accent}/>
               <rect x="2" y="16" width="2" height="5" rx="1" fill="#334155"/>
               <rect x="30" y="16" width="2" height="5" rx="1" fill="#334155"/>
               <rect x="8" y="22" width="18" height="4" rx="1.5" fill="#0f172a"/>
@@ -3282,17 +3282,17 @@ export default function WebDashboard() {
             ) : (
               /* Mr Robot — original robot SVG untouched */
               <svg width="30" height="30" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <line x1="17" y1="1" x2="17" y2="7" stroke=theme.accent strokeWidth="1.8" strokeLinecap="round"/>
-                <circle cx="17" cy="1.5" r="2" fill=theme.accent/>
-                <rect x="3" y="7" width="28" height="22" rx="5" fill={effectiveDark ? "#2e3a5c" : "#e0e7ff"} stroke=theme.accent strokeWidth="1.5"/>
-                <rect x="8" y="13" width="6" height="6" rx="1.5" fill=theme.accent/>
-                <rect x="20" y="13" width="6" height="6" rx="1.5" fill=theme.accent/>
+                <line x1="17" y1="1" x2="17" y2="7" stroke={theme.accent} strokeWidth="1.8" strokeLinecap="round"/>
+                <circle cx="17" cy="1.5" r="2" fill={theme.accent}/>
+                <rect x="3" y="7" width="28" height="22" rx="5" fill={effectiveDark ? "#2e3a5c" : "#e0e7ff"} stroke={theme.accent} strokeWidth="1.5"/>
+                <rect x="8" y="13" width="6" height="6" rx="1.5" fill={theme.accent}/>
+                <rect x="20" y="13" width="6" height="6" rx="1.5" fill={theme.accent}/>
                 <rect x="2" y="16" width="2" height="5" rx="1" fill={effectiveDark ? "#4a5a8a" : "#c7d2fe"}/>
                 <rect x="30" y="16" width="2" height="5" rx="1" fill={effectiveDark ? "#4a5a8a" : "#c7d2fe"}/>
                 <rect x="8" y="22" width="18" height="4" rx="1.5" fill={effectiveDark ? "#1e293b" : "#c7d2fe"}/>
-                <rect x="10" y="22" width="3" height="4" rx="1" fill=theme.accent/>
-                <rect x="15.5" y="22" width="3" height="4" rx="1" fill=theme.accent/>
-                <rect x="21" y="22" width="3" height="4" rx="1" fill=theme.accent/>
+                <rect x="10" y="22" width="3" height="4" rx="1" fill={theme.accent}/>
+                <rect x="15.5" y="22" width="3" height="4" rx="1" fill={theme.accent}/>
+                <rect x="21" y="22" width="3" height="4" rx="1" fill={theme.accent}/>
               </svg>
             )}
             <div>
@@ -3448,7 +3448,7 @@ export default function WebDashboard() {
         {/* Content */}
         {loading && (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, padding: 40 }}>
-            <CircularLoader size={56} label="Loading data…" color=theme.accent labelColor="#94a3b8" />
+            <CircularLoader size={56} label="Loading data…" color={theme.accent} labelColor="#94a3b8" />
           </div>
         )}
         {!loading && error && (
