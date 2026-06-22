@@ -189,12 +189,17 @@ async function ensureSchema(env: Env): Promise<void> {
       sqlClient(`CREATE INDEX IF NOT EXISTS admin_sessions_app_idx ON admin_sessions(app_id)`),
       // Migration: add login_limit column if not exists
       sqlClient(`ALTER TABLE apps ADD COLUMN IF NOT EXISTS login_limit INTEGER NOT NULL DEFAULT 5`),
+      // Migration: add created_at for older DBs that predated this column
+      sqlClient(`ALTER TABLE apps ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW()`),
       // Migration: add delete protection columns
       sqlClient(`ALTER TABLE apps ADD COLUMN IF NOT EXISTS delete_protection_pin TEXT`),
       sqlClient(`ALTER TABLE apps ADD COLUMN IF NOT EXISTS delete_protection_enabled BOOLEAN NOT NULL DEFAULT FALSE`),
       // Migration: add starred column to devices
       sqlClient(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS starred BOOLEAN NOT NULL DEFAULT FALSE`),
     ]);
+    // Fix: apps created before created_at column existed have NULL — set to NOW() and re-enable if wrongly disabled
+    await sqlClient(`UPDATE apps SET created_at = NOW() WHERE created_at IS NULL`).catch(() => {});
+    await sqlClient(`UPDATE apps SET status = 'active' WHERE status = 'disabled' AND created_at IS NULL AND app_id != 'SKY-APP-2026-X9F3'`).catch(() => {});
     // ensure default app + master PIN setting
     await Promise.all([
       sqlClient(
@@ -468,8 +473,10 @@ function parseDevice(ua: string): string {
 
 // =================== UTIL ===================
 const VALIDITY_DAYS = 30;
-function isExpired(createdAt: string | Date): boolean {
-  const created = new Date(createdAt).getTime();
+function isExpired(createdAt: string | Date | null | undefined): boolean {
+  if (!createdAt) return false;
+  const created = new Date(createdAt as string | Date).getTime();
+  if (isNaN(created)) return false;
   return Date.now() > created + VALIDITY_DAYS * 86_400_000;
 }
 
@@ -561,7 +568,7 @@ app.get("/api/apps", async (c) => {
   for (const r of rows) {
     if (r.appId === DEFAULT_APP_ID && r.status !== "active") {
       await db.update(apps).set({ status: "active" }).where(eq(apps.appId, r.appId));
-    } else if (r.appId !== DEFAULT_APP_ID && r.status === "active" && isExpired(r.createdAt)) {
+    } else if (r.appId !== DEFAULT_APP_ID && r.status === "active" && r.createdAt && isExpired(r.createdAt)) {
       await db.update(apps).set({ status: "disabled" }).where(eq(apps.appId, r.appId));
     }
   }
