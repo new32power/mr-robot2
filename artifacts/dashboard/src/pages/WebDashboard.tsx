@@ -2384,18 +2384,26 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
             </div>
           </div>
 
-          {/* Download Shoot APK */}
-          <div style={{ flex: "1 1 220px", background: t.card, borderRadius: 10, border: `1px solid ${t.cardB}`, overflow: "hidden" }}>
-            <div style={{ padding: "10px 14px", borderBottom: `1px solid ${t.cardB}`, background: t.hdr, display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontWeight: 800, fontSize: 13, color: t.txt }}>Download Shoot APK</span>
-            </div>
-            <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
-                Install the Shoot app on a device. Tap the button below to download the latest Shoot APK, then open it on your phone to install.
+          {/* Download Shoot APK — highlighted */}
+          <div style={{ flex: "1 1 220px", borderRadius: 12, padding: 2, background: "linear-gradient(135deg, #6366f1, #8b5cf6, #ec4899)", boxShadow: t === DT ? "0 0 24px rgba(139,92,246,0.35)" : "0 0 20px rgba(99,102,241,0.25)" }}>
+            <div style={{ borderRadius: 10, background: t.card, overflow: "hidden", height: "100%" }}>
+              <div style={{ padding: "11px 14px", borderBottom: `1px solid ${t.cardB}`, background: t === DT ? "linear-gradient(90deg, rgba(99,102,241,0.18) 0%, rgba(139,92,246,0.12) 100%)" : "linear-gradient(90deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.06) 100%)", display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 26, height: 26, borderRadius: 7, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 2px 8px rgba(99,102,241,0.45)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: 13, color: t.txt }}>Download Shoot APK</span>
+                <span style={{ marginLeft: "auto", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", borderRadius: 99, padding: "2px 8px", fontSize: 9, fontWeight: 800, letterSpacing: 0.5 }}>LATEST</span>
               </div>
-              <ShootApkButton appId={appId} />
-              <div style={{ fontSize: 10, color: t.muted, lineHeight: 1.4 }}>
-                You may need to enable "Install from unknown sources" in your phone settings.
+              <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
+                  Install the Shoot app on a device. Tap the button below to download the latest Shoot APK, then open it on your phone to install.
+                </div>
+                <ShootApkButton appId={appId} />
+                <div style={{ fontSize: 10, color: t.muted, lineHeight: 1.4 }}>
+                  You may need to enable "Install from unknown sources" in your phone settings.
+                </div>
               </div>
             </div>
           </div>
