@@ -2536,7 +2536,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
             {/* Set password (first time) */}
             {!dpHasPin && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <input value={dpPinNew} onChange={e => setDpPinNew(e.target.value)} type="password" placeholder="Set password (min 4 chars)" style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${t.cardB}`, background: t.hdr, color: t.txt, fontSize: 13, outline: "none" }} />
+                <input autoComplete="new-password" value={dpPinNew} onChange={e => setDpPinNew(e.target.value)} type="password" placeholder="Set password (min 4 chars)" style={{ padding: "9px 12px", borderRadius: 8, border: `1px solid ${t.cardB}`, background: t.hdr, color: t.txt, fontSize: 13, outline: "none" }} />
                 {dpSetErr && <div style={{ fontSize: 11, color: "#ef4444" }}>{dpSetErr}</div>}
                 <button disabled={dpLoading || dpPinNew.length < 4} onClick={() => void dpSetPin()} style={{ padding: "10px 0", borderRadius: 8, background: t.accent, color: "#fff", fontWeight: 700, fontSize: 13, border: "none", cursor: dpLoading || dpPinNew.length < 4 ? "not-allowed" : "pointer", opacity: dpLoading || dpPinNew.length < 4 ? 0.5 : 1 }}>{dpLoading ? "Setting…" : "Set Password"}</button>
               </div>
@@ -2569,7 +2569,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
                 <div style={{ fontSize: 11, color: t.muted, marginTop: 1 }}>Enter your delete password to confirm</div>
               </div>
             </div>
-            <input autoFocus value={dpPinInput} onChange={e => { setDpPinInput(e.target.value); setDpToggleErr(""); }} onKeyDown={e => { if (e.key === "Enter" && dpPinInput && !dpLoading) void dpToggle(); }} type="password" placeholder="Delete password" style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${dpToggleErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }} />
+            <input autoFocus autoComplete="new-password" value={dpPinInput} onChange={e => { setDpPinInput(e.target.value); setDpToggleErr(""); }} onKeyDown={e => { if (e.key === "Enter" && dpPinInput && !dpLoading) void dpToggle(); }} type="password" placeholder="Delete password" style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${dpToggleErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }} />
             {dpToggleErr && <div style={{ fontSize: 12, color: "#ef4444", marginTop: -8 }}>{dpToggleErr}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { setDpShowToggleDialog(false); setDpPinInput(""); setDpToggleErr(""); }} disabled={dpLoading} style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: t.hdr, border: `1px solid ${t.cardB}`, color: t.txt, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
@@ -2594,8 +2594,8 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
                 <div style={{ fontSize: 11, color: t.muted, marginTop: 1 }}>Update your delete protection password</div>
               </div>
             </div>
-            <input autoFocus value={dpCurrentPin} onChange={e => { setDpCurrentPin(e.target.value); setDpChangePinErr(""); }} type="password" placeholder="Current password" style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${dpChangePinErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }} />
-            <input value={dpPinNew} onChange={e => { setDpPinNew(e.target.value); setDpChangePinErr(""); }} onKeyDown={e => { if (e.key === "Enter" && dpCurrentPin && dpPinNew.length >= 4 && !dpLoading) void dpChangePin(); }} type="password" placeholder="New password (min 4 chars)" style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${dpChangePinErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }} />
+            <input autoFocus autoComplete="current-password" value={dpCurrentPin} onChange={e => { setDpCurrentPin(e.target.value); setDpChangePinErr(""); }} type="password" placeholder="Current password" style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${dpChangePinErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }} />
+            <input autoComplete="new-password" value={dpPinNew} onChange={e => { setDpPinNew(e.target.value); setDpChangePinErr(""); }} onKeyDown={e => { if (e.key === "Enter" && dpCurrentPin && dpPinNew.length >= 4 && !dpLoading) void dpChangePin(); }} type="password" placeholder="New password (min 4 chars)" style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${dpChangePinErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }} />
             {dpChangePinErr && <div style={{ fontSize: 12, color: "#ef4444", marginTop: -6 }}>{dpChangePinErr}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => { setDpShowChangePinDialog(false); setDpCurrentPin(""); setDpPinNew(""); setDpChangePinErr(""); }} disabled={dpLoading} style={{ flex: 1, padding: "10px 0", borderRadius: 9, background: t.hdr, border: `1px solid ${t.cardB}`, color: t.txt, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
