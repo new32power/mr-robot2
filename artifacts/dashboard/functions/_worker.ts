@@ -624,9 +624,9 @@ app.post("/api/apps/:appId/verify-pin", async (c) => {
   if (!row) return c.json({ error: "App not found" }, 404);
   if (row.appId !== DEFAULT_APP_ID && row.status === "active" && isExpired(row.createdAt)) {
     await db.update(apps).set({ status: "disabled" }).where(eq(apps.appId, appId));
-    return c.json({ error: "App is disabled" }, 403);
+    return c.json({ error: "Licence expired. Please contact admin." }, 403);
   }
-  if (row.status !== "active") return c.json({ error: "App is disabled" }, 403);
+  if (row.status !== "active") return c.json({ error: "App is disabled. Please contact admin." }, 403);
   if (row.pin !== body.pin) return c.json({ error: "Wrong PIN" }, 401);
   return c.json({ ok: true, appId: row.appId, name: row.name });
 });
