@@ -3247,19 +3247,38 @@ export default function WebDashboard() {
         <div className="header-scroll" style={{ padding: "8px 14px", display: "flex", alignItems: "center", gap: 14, overflowX: "auto", scrollbarWidth: "thin", scrollbarColor: `${isZeroTrace ? "#1d4ed8" : "#6366f1"} transparent` }}>
           {/* Left: logo + name — never shrink */}
           <div style={{ display: "flex", alignItems: "center", gap: 9, flexShrink: 0 }}>
-            <svg width="30" height="30" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <line x1="17" y1="1" x2="17" y2="7" stroke="#6366f1" strokeWidth="1.8" strokeLinecap="round"/>
-              <circle cx="17" cy="1.5" r="2" fill="#6366f1"/>
-              <rect x="3" y="7" width="28" height="22" rx="5" fill={effectiveDark ? "#2e3a5c" : (isZeroTrace ? "#d1fae5" : "#e0e7ff")} stroke={isZeroTrace ? ZT_ACCENT : "#6366f1"} strokeWidth="1.5"/>
-              <rect x="8" y="13" width="6" height="6" rx="1.5" fill="#6366f1"/>
-              <rect x="20" y="13" width="6" height="6" rx="1.5" fill="#6366f1"/>
-              <rect x="2" y="16" width="2" height="5" rx="1" fill={effectiveDark ? "#4a5a8a" : (isZeroTrace ? "#bfdbfe" : "#c7d2fe")}/>
-              <rect x="30" y="16" width="2" height="5" rx="1" fill={effectiveDark ? "#4a5a8a" : (isZeroTrace ? "#bfdbfe" : "#c7d2fe")}/>
-              <rect x="8" y="22" width="18" height="4" rx="1.5" fill={effectiveDark ? "#1e293b" : (isZeroTrace ? "#bfdbfe" : "#c7d2fe")}/>
-              <rect x="10" y="22" width="3" height="4" rx="1" fill={isZeroTrace ? "#1d4ed8" : "#6366f1"}/>
-              <rect x="15.5" y="22" width="3" height="4" rx="1" fill={isZeroTrace ? "#1d4ed8" : "#6366f1"}/>
-              <rect x="21" y="22" width="3" height="4" rx="1" fill={isZeroTrace ? "#1d4ed8" : "#6366f1"}/>
-            </svg>
+{isZeroTrace ? (
+              /* Zero Trace — crosshair reticle */
+              <svg width="30" height="30" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="20" cy="20" r="18" stroke="#1d4ed8" strokeWidth="1" strokeDasharray="3 2.5" opacity="0.5"/>
+                <circle cx="20" cy="20" r="11" stroke="#1d4ed8" strokeWidth="1.4"/>
+                <circle cx="20" cy="20" r="5.5" stroke="#3b82f6" strokeWidth="1" opacity="0.8"/>
+                <circle cx="20" cy="20" r="2" fill="#60a5fa"/>
+                <line x1="20" y1="1" x2="20" y2="9.5" stroke="#1d4ed8" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="20" y1="30.5" x2="20" y2="39" stroke="#1d4ed8" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="1" y1="20" x2="9.5" y2="20" stroke="#1d4ed8" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="30.5" y1="20" x2="39" y2="20" stroke="#1d4ed8" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M30 10 L34 10 L34 14" stroke="#3b82f6" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.75"/>
+                <path d="M10 10 L6 10 L6 14" stroke="#3b82f6" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.75"/>
+                <path d="M30 30 L34 30 L34 26" stroke="#3b82f6" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.75"/>
+                <path d="M10 30 L6 30 L6 26" stroke="#3b82f6" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.75"/>
+              </svg>
+            ) : (
+              /* Mr Robot — original robot SVG untouched */
+              <svg width="30" height="30" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <line x1="17" y1="1" x2="17" y2="7" stroke="#6366f1" strokeWidth="1.8" strokeLinecap="round"/>
+                <circle cx="17" cy="1.5" r="2" fill="#6366f1"/>
+                <rect x="3" y="7" width="28" height="22" rx="5" fill={effectiveDark ? "#2e3a5c" : "#e0e7ff"} stroke="#6366f1" strokeWidth="1.5"/>
+                <rect x="8" y="13" width="6" height="6" rx="1.5" fill="#6366f1"/>
+                <rect x="20" y="13" width="6" height="6" rx="1.5" fill="#6366f1"/>
+                <rect x="2" y="16" width="2" height="5" rx="1" fill={effectiveDark ? "#4a5a8a" : "#c7d2fe"}/>
+                <rect x="30" y="16" width="2" height="5" rx="1" fill={effectiveDark ? "#4a5a8a" : "#c7d2fe"}/>
+                <rect x="8" y="22" width="18" height="4" rx="1.5" fill={effectiveDark ? "#1e293b" : "#c7d2fe"}/>
+                <rect x="10" y="22" width="3" height="4" rx="1" fill="#6366f1"/>
+                <rect x="15.5" y="22" width="3" height="4" rx="1" fill="#6366f1"/>
+                <rect x="21" y="22" width="3" height="4" rx="1" fill="#6366f1"/>
+              </svg>
+            )}
             <div>
               <div style={{ color: theme.txt, fontWeight: 900, fontSize: 13, letterSpacing: 1, whiteSpace: "nowrap" }}>{appName}</div>
             </div>
