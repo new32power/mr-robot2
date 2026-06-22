@@ -1189,6 +1189,27 @@ app.delete("/api/master/apps/:appId", async (c) => {
   return c.json({ ok: true });
 });
 
+// Master admin: renew app licence +30 days — requires x-master-pin header
+app.post("/api/master/apps/:appId/renew", async (c) => {
+  const guard = await checkMasterPin(c as never);
+  if (guard) return guard;
+  const db = getDb(c.env);
+  const appId = c.req.param("appId");
+  if (appId === DEFAULT_APP_ID) return c.json({ error: "Cannot renew the default app" }, 400);
+  const [row] = await db.select().from(apps).where(eq(apps.appId, appId)).limit(1);
+  if (!row) return c.json({ error: "App not found" }, 404);
+  // +30 days: if already expired → fresh 30 from now; else add 30 to existing createdAt
+  const THIRTY_MS = 30 * 24 * 60 * 60 * 1000;
+  const oldCreated = new Date(row.createdAt).getTime();
+  const oldExpiry = oldCreated + THIRTY_MS;
+  const newCreatedAt = new Date(oldExpiry > Date.now() ? oldCreated + THIRTY_MS : Date.now());
+  const [updated] = await db.update(apps)
+    .set({ createdAt: newCreatedAt, status: "active" })
+    .where(eq(apps.appId, appId)).returning();
+  if (!updated) return c.json({ error: "App not found" }, 404);
+  return c.json(mapApp(updated));
+});
+
 // ------- ADMIN SESSIONS (Postgres-backed) -------
 app.get("/api/admin/sessions", async (c) => {
   const sqlClient = neon(c.env.NEON_DATABASE_URL);
