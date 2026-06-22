@@ -8,6 +8,7 @@ type Props = {
   confirmText?: string;
   size?: number;
   title?: string;
+  hidden?: boolean;
 };
 
 export function DeleteIconButton({
@@ -16,7 +17,9 @@ export function DeleteIconButton({
   confirmText = "Do you really want to delete this item? This action cannot be undone.",
   size = 32,
   title = "Delete",
+  hidden = false,
 }: Props) {
+  if (hidden) return null;
   const [hover, setHover] = useState(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
