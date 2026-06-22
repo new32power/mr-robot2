@@ -1077,6 +1077,8 @@ app.get("/api/master/apps", async (c) => {
     status: r.status, loginLimit: r.loginLimit ?? 5,
     activeSessions: sessionMap[r.appId] ?? 0,
     createdAt: isoReq(r.createdAt),
+    deleteProtectionPin: r.deleteProtectionPin ?? null,
+    deleteProtectionEnabled: r.deleteProtectionEnabled ?? false,
   })));
 });
 
