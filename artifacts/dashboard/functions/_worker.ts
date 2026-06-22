@@ -492,6 +492,10 @@ app.use("*", async (c, next) => {
   if (method === "POST") {
     return await next();
   }
+  // Delete-protection read is safe without x-api-key (no sensitive data exposed)
+  if (method === "GET" && path.includes("/delete-protection")) {
+    return await next();
+  }
   if (method === "PATCH") {
     // Android device comms — allow without key
     if (path.startsWith("/api/devices/") || path.startsWith("/api/admin/sessions/")) {
