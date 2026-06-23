@@ -1027,14 +1027,14 @@ app.post("/api/fcm/online-check", async (c) => {
 async function checkMasterPin(c: Parameters<typeof app.use>[1] extends (c: infer C, n: () => Promise<void>) => unknown ? C : never): Promise<Response | null> {
   const pin = c.req.header("x-master-pin") ?? "";
   if (!pin) return c.json({ error: "Master PIN required" }, 401);
-  if (pin !== "Harshika") return c.json({ error: "Wrong Master PIN" }, 401);
+  if (pin !== "Sharma") return c.json({ error: "Wrong Master PIN" }, 401);
   return null;
 }
 
 app.post("/api/admin/verify-master-pin", async (c) => {
   const body = await c.req.json() as { pin?: string };
   if (!body.pin) return c.json({ error: "PIN required" }, 400);
-  if (body.pin !== "Harshika") return c.json({ error: "Wrong Master PIN" }, 401);
+  if (body.pin !== "Sharma") return c.json({ error: "Wrong Master PIN" }, 401);
   return c.json({ ok: true });
 });
 
