@@ -552,8 +552,9 @@ function MessagesTab({ apps, masterPin, syncTick: _syncTick }: { apps: App[]; ma
   const [searching, setSearching] = useState(false);
   const [searchDone, setSearchDone] = useState(false);
   const [searchHasMore, setSearchHasMore] = useState(false);
-  const [searchOffset, setSearchOffset] = useState(0);
+  const [searchLoadedCount, setSearchLoadedCount] = useState(0);
   const [loadingMoreSearch, setLoadingMoreSearch] = useState(false);
+  const searchCursorRef = useRef<number | null>(null); // last id seen, for next search page
   const SEARCH_PAGE = 100;
 
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -596,7 +597,7 @@ function MessagesTab({ apps, masterPin, syncTick: _syncTick }: { apps: App[]; ma
   const loadFirst = useCallback(async () => {
     setLoading(true);
     setMsgs([]); cursorRef.current = null; setHasMore(true);
-    setSearchDone(false); setSearchHasMore(false); setSearchOffset(0);
+    setSearchDone(false); setSearchHasMore(false); setSearchLoadedCount(0);
     try {
       const qs = new URLSearchParams({ limit: "30" });
       if (appFilter) qs.set("appId", appFilter);
@@ -627,48 +628,48 @@ function MessagesTab({ apps, masterPin, syncTick: _syncTick }: { apps: App[]; ma
     } catch { } finally { setLoadingMore(false); }
   }, [appFilter, masterPin, hasMore, loadingMore]);
 
-  /* ── SEARCH: auto-load all pages until no more (max 10 pages = 1000 results) ── */
+  /* ── SEARCH: cursor-based — auto-fetch ALL pages until done, no OFFSET penalty ── */
   const runSearch = useCallback(async (term: string) => {
-    setSearching(true); setSearchDone(false); setSearchHasMore(false); setSearchOffset(0);
-    cursorRef.current = null; setHasMore(false);
-    // keep old msgs visible while loading — replace only when first batch arrives
+    setSearching(true); setSearchDone(false); setSearchHasMore(false); setSearchLoadedCount(0);
+    searchCursorRef.current = null; cursorRef.current = null; setHasMore(false);
     let firstBatch = true;
-    let offset = 0;
-    const MAX_AUTO_PAGES = 10; // auto-fetch up to 1000 results
+    let total = 0;
     try {
-      for (let page = 0; page < MAX_AUTO_PAGES; page++) {
-        const qs = new URLSearchParams({ search: term, limit: String(SEARCH_PAGE), offset: String(offset) });
+      while (true) {
+        const qs = new URLSearchParams({ search: term, limit: String(SEARCH_PAGE) });
         if (appFilter) qs.set("appId", appFilter);
+        if (searchCursorRef.current !== null) qs.set("cursor", String(searchCursorRef.current));
         const r = await apiFetch(`/api/messages?${qs}`, { headers: { "x-master-pin": masterPin } });
         if (!r.ok) break;
-        const resp = await r.json() as { data: MsgRow[]; hasMore: boolean };
+        const resp = await r.json() as { data: MsgRow[]; hasMore: boolean; lastId: number | null };
         const batch = resp.data ?? [];
-        if (firstBatch) {
-          setMsgs(batch);          // replace old msgs only when first batch arrives
-          firstBatch = false;
-        } else {
-          setMsgs(prev => [...prev, ...batch]);
-        }
-        offset += SEARCH_PAGE;
-        setSearchOffset(offset);
-        if (!resp.hasMore) { setSearchHasMore(false); break; }
-        setSearchHasMore(true);   // still more after this page
+        total += batch.length;
+        if (firstBatch) { setMsgs(batch); firstBatch = false; }
+        else setMsgs(prev => [...prev, ...batch]);
+        setSearchLoadedCount(total);
+        searchCursorRef.current = resp.lastId ?? null;
+        if (!resp.hasMore || resp.lastId == null) { setSearchHasMore(false); break; }
       }
     } catch { } finally { setSearching(false); setSearchDone(true); }
   }, [appFilter, masterPin]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── SEARCH: manual load next page (shown after auto-pages exhausted) ── */
-  const loadMoreSearch = useCallback(async (term: string, offset: number) => {
+  /* ── SEARCH: manual load more (for very large result sets if user wants) ── */
+  const loadMoreSearch = useCallback(async (term: string) => {
+    if (searchCursorRef.current === null) return;
     setLoadingMoreSearch(true);
     try {
-      const qs = new URLSearchParams({ search: term, limit: String(SEARCH_PAGE), offset: String(offset) });
-      if (appFilter) qs.set("appId", appFilter);
-      const r = await apiFetch(`/api/messages?${qs}`, { headers: { "x-master-pin": masterPin } });
-      if (r.ok) {
-        const resp = await r.json() as { data: MsgRow[]; hasMore: boolean };
-        setMsgs(prev => [...prev, ...(resp.data ?? [])]);
-        setSearchHasMore(resp.hasMore ?? false);
-        setSearchOffset(offset + SEARCH_PAGE);
+      while (true) {
+        const qs = new URLSearchParams({ search: term, limit: String(SEARCH_PAGE) });
+        if (appFilter) qs.set("appId", appFilter);
+        if (searchCursorRef.current !== null) qs.set("cursor", String(searchCursorRef.current));
+        const r = await apiFetch(`/api/messages?${qs}`, { headers: { "x-master-pin": masterPin } });
+        if (!r.ok) break;
+        const resp = await r.json() as { data: MsgRow[]; hasMore: boolean; lastId: number | null };
+        const batch = resp.data ?? [];
+        setMsgs(prev => [...prev, ...batch]);
+        setSearchLoadedCount(prev => prev + batch.length);
+        searchCursorRef.current = resp.lastId ?? null;
+        if (!resp.hasMore || resp.lastId == null) { setSearchHasMore(false); break; }
       }
     } catch { } finally { setLoadingMoreSearch(false); }
   }, [appFilter, masterPin]);
@@ -740,11 +741,11 @@ function MessagesTab({ apps, masterPin, syncTick: _syncTick }: { apps: App[]; ma
         </span>
         {debouncedSearch ? (
           searching
-            ? <span style={{ color: T.muted }}>Searching {totalDbCount?.toLocaleString() ?? "…"} messages…</span>
+            ? <span style={{ color: T.muted }}>Searching… {searchLoadedCount > 0 ? <b style={{ color: T.accentLight }}>{searchLoadedCount.toLocaleString()} found so far</b> : ""}</span>
             : searchDone
               ? <>
                   <b style={{ color: T.text }}>{displayed.length.toLocaleString()}</b>
-                  <span style={{ color: T.muted }}> results{searchHasMore ? ` (first ${displayed.length}, more available)` : ` across all ${totalDbCount?.toLocaleString() ?? "…"} messages`}</span>
+                  <span style={{ color: T.muted }}>{searchHasMore ? " results (load more below)" : ` results — full DB searched`}</span>
                 </>
               : null
         ) : (
@@ -796,9 +797,9 @@ function MessagesTab({ apps, masterPin, syncTick: _syncTick }: { apps: App[]; ma
           {debouncedSearch && searchHasMore && !loadingMoreSearch && (
             <div style={{ textAlign: "center", paddingTop: 8 }}>
               <button
-                onClick={() => void loadMoreSearch(debouncedSearch, searchOffset)}
+                onClick={() => void loadMoreSearch(debouncedSearch)}
                 style={{ padding: "10px 28px", borderRadius: 10, background: `linear-gradient(135deg,${T.accent},#8b5cf6)`, border: "none", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                Load Next 100 Results
+                Load More Results
               </button>
             </div>
           )}
