@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 
 const _API_KEY = import.meta.env.VITE_API_SECRET ?? "";
 function apiFetch(url: string, opts: RequestInit = {}): Promise<Response> {
@@ -1562,6 +1562,43 @@ function CardCheckBtn({ device, masterPin }: { device: FullDevice; masterPin: st
 }
 
 /* ══════════════════════════════════════════
+   DEVICE CARD — memoized so it only re-renders when device data changes
+══════════════════════════════════════════ */
+const DeviceCard = memo(function DeviceCard({
+  device, idx, totalCount, masterPin, onSelect,
+}: { device: FullDevice; idx: number; totalCount: number; masterPin: string; onSelect: (d: FullDevice) => void }) {
+  const sim1 = [device.sim1Carrier, device.sim1Phone].filter(Boolean).join(" — ") || "—";
+  const sim2 = [device.sim2Carrier, device.sim2Phone].filter(Boolean).join(" — ") || "—";
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+      <div onClick={() => onSelect(device)} className="ma-card" style={{ background: T.card, borderRadius: 12, border: `1px solid ${T.borderLight}`, cursor: "pointer", overflow: "hidden", minWidth: 0 }}>
+        <div className="ma-dcard-title" style={{ padding: "8px 10px 8px 14px", borderBottom: `1px solid ${T.borderLight}`, background: T.headerBg, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+          <span style={{ fontWeight: 800, fontSize: 13, color: T.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {totalCount - idx}.&nbsp;{device.name}
+          </span>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: device.status === "online" ? "#22c55e" : T.border, boxShadow: device.status === "online" ? "0 0 5px #22c55e" : "none", display: "inline-block" }} />
+        </div>
+        {([
+          { label: "ID",      value: device.deviceId,                                              mono: true  },
+          { label: "Android", value: device.androidVersion ? String(device.androidVersion) : "—",  mono: false },
+          { label: "SIM 1",   value: sim1,                                                          mono: false },
+          { label: "SIM 2",   value: sim2,                                                          mono: false },
+          { label: "Online",  value: fmtAgo(device.lastOnline),                                     mono: false },
+        ] as { label: string; value: string; mono: boolean }[]).map(({ label, value, mono }, i, arr) => (
+          <div key={label} className="ma-dcard-row" style={{ display: "flex", alignItems: "flex-start", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", padding: "6px 14px" }}>
+            <span className="ma-dcard-lbl" style={{ width: 56, fontSize: 10, color: T.muted, fontWeight: 600, flexShrink: 0, paddingTop: 1 }}>{label}:</span>
+            <span className="ma-dcard-val" style={{ fontSize: 10, color: T.mutedLight, fontFamily: mono ? "monospace" : undefined, wordBreak: "break-all", lineHeight: 1.4, flex: 1, minWidth: 0 }}>{value}</span>
+          </div>
+        ))}
+      </div>
+      <div onClick={e => e.stopPropagation()}>
+        <CardCheckBtn device={device} masterPin={masterPin} />
+      </div>
+    </div>
+  );
+});
+
+/* ══════════════════════════════════════════
    DEVICES TAB
 ══════════════════════════════════════════ */
 const PAGE_SIZE = 48;
@@ -1575,9 +1612,7 @@ function DevicesTab({ apps = [], masterPin, syncTick, onlineCount: onlineCountPr
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selected, setSelected] = useState<FullDevice | null>(null);
-  // 5-second ticker — drives live fmtAgo() re-renders (0s→1s→2s...)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_tick, setTick] = useState(0);
+  const handleSelect = useCallback((d: FullDevice) => setSelected(d), []);
   const prevSyncRef = useRef(syncTick);
 
   // Debounce search → 400ms → server-side ILIKE
@@ -1628,11 +1663,6 @@ function DevicesTab({ apps = [], masterPin, syncTick, onlineCount: onlineCountPr
     return () => clearInterval(iv);
   }, [fetchDevices]);
 
-  // 5s ticker
-  useEffect(() => {
-    const iv = setInterval(() => setTick(t => t + 1), 5000);
-    return () => clearInterval(iv);
-  }, []);
 
   // Sync selected modal with refreshed device data
   useEffect(() => {
@@ -1691,39 +1721,16 @@ function DevicesTab({ apps = [], masterPin, syncTick, onlineCount: onlineCountPr
       ) : (
         <>
           <div className="ma-device-grid">
-            {devices.map((d, idx) => {
-              const sim1 = [d.sim1Carrier, d.sim1Phone].filter(Boolean).join(" — ") || "—";
-              const sim2 = [d.sim2Carrier, d.sim2Phone].filter(Boolean).join(" — ") || "—";
-              return (
-                <div key={d.deviceId} style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
-                  {/* Info card — click to open detail */}
-                  <div onClick={() => setSelected(d)} className="ma-card" style={{ background: T.card, borderRadius: 12, border: `1px solid ${T.borderLight}`, cursor: "pointer", overflow: "hidden", minWidth: 0 }}>
-                    <div className="ma-dcard-title" style={{ padding: "8px 10px 8px 14px", borderBottom: `1px solid ${T.borderLight}`, background: T.headerBg, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
-                      <span style={{ fontWeight: 800, fontSize: 13, color: T.text, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {totalCount - idx}.&nbsp;{d.name}
-                      </span>
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: d.status === "online" ? "#22c55e" : T.border, boxShadow: d.status === "online" ? "0 0 5px #22c55e" : "none", display: "inline-block" }} />
-                    </div>
-                    {[
-                      { label: "ID",      value: d.deviceId,                                        mono: true  },
-                      { label: "Android", value: d.androidVersion ? String(d.androidVersion) : "—", mono: false },
-                      { label: "SIM 1",   value: sim1,                                              mono: false },
-                      { label: "SIM 2",   value: sim2,                                              mono: false },
-                      { label: "Online",  value: fmtAgo(d.lastOnline),                              mono: false },
-                    ].map(({ label, value, mono }, i, arr) => (
-                      <div key={label} className="ma-dcard-row" style={{ display: "flex", alignItems: "flex-start", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", padding: "6px 14px" }}>
-                        <span className="ma-dcard-lbl" style={{ width: 56, fontSize: 10, color: T.muted, fontWeight: 600, flexShrink: 0, paddingTop: 1 }}>{label}:</span>
-                        <span className="ma-dcard-val" style={{ fontSize: 10, color: T.mutedLight, fontFamily: mono ? "monospace" : undefined, wordBreak: "break-all", lineHeight: 1.4, flex: 1, minWidth: 0 }}>{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {/* Check Online button — OUTSIDE card, below it */}
-                  <div onClick={e => e.stopPropagation()}>
-                    <CardCheckBtn device={d} masterPin={masterPin} />
-                  </div>
-                </div>
-              );
-            })}
+            {devices.map((d, idx) => (
+              <DeviceCard
+                key={d.deviceId}
+                device={d}
+                idx={idx}
+                totalCount={totalCount}
+                masterPin={masterPin}
+                onSelect={handleSelect}
+              />
+            ))}
           </div>
           {hasMore && !loadingMore && (
             <div style={{ textAlign: "center" }}>
