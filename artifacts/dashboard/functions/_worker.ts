@@ -826,6 +826,7 @@ app.post("/api/messages", async (c) => {
   UserId: <code>${mapped.userId}</code>
   💬 ${mapped.body}`,
       mapped.appId
+    ),
     cleanupOldMessages(c.env, mapped.appId),
   ]));
   return c.json({ ok: true, id: mapped.id }, 201);
