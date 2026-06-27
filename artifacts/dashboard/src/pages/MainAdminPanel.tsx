@@ -1643,25 +1643,36 @@ function DevicesTab({ apps = [], masterPin, syncTick, onlineCount: onlineCountPr
   // Reset to page 1 on filter/search change
   useEffect(() => { void fetchDevices(0, true); }, [fetchDevices]);
 
-  // syncTick (WS device_updated) → silent refresh of first page
+  // syncTick (manual sync button) → full refresh
   useEffect(() => {
     if (syncTick === prevSyncRef.current) return;
     prevSyncRef.current = syncTick;
     void fetchDevices(0, true, true);
   }, [syncTick]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // mrrobot:refresh_devices → silent refresh
+  // WS reconnected (after disconnect gap) → one full refresh to catch missed events
   useEffect(() => {
-    function onRefresh() { void fetchDevices(0, true, true); }
-    window.addEventListener("mrrobot:refresh_devices", onRefresh);
-    return () => window.removeEventListener("mrrobot:refresh_devices", onRefresh);
+    function onReconnect() { void fetchDevices(0, true, true); }
+    window.addEventListener("mrrobot:ws_reconnected", onReconnect);
+    return () => window.removeEventListener("mrrobot:ws_reconnected", onReconnect);
   }, [fetchDevices]);
 
-  // 30s fallback polling
+  // Live: device_updated WS event → surgically update that one card, zero HTTP
   useEffect(() => {
-    const iv = setInterval(() => { void fetchDevices(0, true, true); }, 30000);
-    return () => clearInterval(iv);
-  }, [fetchDevices]);
+    function onUpdated(e: Event) {
+      const d = (e as CustomEvent).detail as Partial<FullDevice> & { deviceId?: string };
+      if (!d.deviceId) return;
+      setDevices(prev => {
+        const i = prev.findIndex(x => x.deviceId === d.deviceId);
+        if (i === -1) return prev; // not in current page/filter — ignore
+        const next = [...prev];
+        next[i] = { ...next[i], ...d };
+        return next;
+      });
+    }
+    window.addEventListener("mrrobot:device_updated", onUpdated);
+    return () => window.removeEventListener("mrrobot:device_updated", onUpdated);
+  }, []);
 
 
   // Sync selected modal with refreshed device data
@@ -2069,16 +2080,17 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
       if (closed) return;
       const wsUrl = location.origin.replace(/^http/, "ws") + "/api/events";
       ws = new WebSocket(wsUrl);
-      ws.onopen = () => { setWsConnected(true); };
+      ws.onopen = () => {
+        setWsConnected(true);
+        // Fire reconnect event so DevicesTab can do a full refresh after any disconnect gap
+        window.dispatchEvent(new CustomEvent("mrrobot:ws_reconnected"));
+      };
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data as string) as { event: string; data: unknown };
           if (msg.event === "device_updated") {
-            const d = msg.data as { deviceId?: string };
-            const deviceId = d.deviceId ?? "";
-            window.dispatchEvent(new CustomEvent("mrrobot:device_updated", { detail: { deviceId } }));
-            window.dispatchEvent(new CustomEvent("mrrobot:refresh_devices"));
-            setSyncTick(t => t + 1);
+            // Dispatch full device data — DevicesTab surgically updates the single card, no HTTP re-fetch
+            window.dispatchEvent(new CustomEvent("mrrobot:device_updated", { detail: msg.data }));
           } else if (msg.event === "message_added") {
             const payload = msg.data as { appId: string; message: MsgRow };
             window.dispatchEvent(new CustomEvent("mrrobot:message_added", { detail: payload }));
