@@ -738,8 +738,7 @@ app.get("/api/messages", async (c) => {
   const cursor = c.req.query("cursor"); // last message id for cursor pagination
 
   const PAGE = 30;           // browse page size
-  const SEARCH_LIMIT = 500;  // max search results
-
+  
   // Base filter conditions (app / user / device scope)
   const scopeConds: ReturnType<typeof eq>[] = [];
   if (appId) scopeConds.push(eq(messages.appId, appId));
@@ -752,7 +751,7 @@ app.get("/api/messages", async (c) => {
     const searchCond = sql`(${messages.body} ILIKE ${like} OR ${messages.fromSender} ILIKE ${like} OR ${messages.fromNumber} ILIKE ${like} OR ${messages.appId} ILIKE ${like} OR ${messages.deviceId} ILIKE ${like})` as unknown as ReturnType<typeof eq>;
     const allConds = [...scopeConds, searchCond];
     const where = allConds.length === 1 ? allConds[0] : and(...allConds);
-    const rows = await db.select().from(messages).where(where).orderBy(desc(messages.id)).limit(SEARCH_LIMIT);
+    const rows = await db.select().from(messages).where(where).orderBy(desc(messages.id));
     return c.json(rows.map(mapMessage));
   } else {
     // ── Browse mode: cursor pagination, newest first ───────────────────────
