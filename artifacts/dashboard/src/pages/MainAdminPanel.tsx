@@ -1239,7 +1239,7 @@ function DeviceActionPanel({ action, device, masterPin, onClose }: { action: Act
             color: "#fff", fontWeight: 700, fontSize: 14,
             cursor: state === "sending" ? "wait" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}>
-            {state === "sending" ? <><Spinner /> Waiting… {countdown}s</> : state === "ok" ? "✓ Online" : "Ping Device"}
+            {state === "sending" ? <><Spinner /> Waiting… {countdown}s</> : "Ping Device"}
           </button>
           {state === "sending" && (
             <div style={{ marginTop: 8, height: 3, background: T.border, borderRadius: 2, overflow: "hidden" }}>
@@ -1341,6 +1341,13 @@ function DeviceDetail({ device, masterPin, onClose }: { device: FullDevice; mast
   const [devMsgs, setDevMsgs] = useState<MsgRow[]>([]);
   const [msgsLoading, setMsgsLoading] = useState(false);
   const [msgSearch, setMsgSearch] = useState("");
+
+  // Live timeAgo ticker — sub-admin pattern: refresh every second so "0s ago → 1s ago → 2s ago" keeps updating
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(iv);
+  }, []);
 
   // Inline states for direct-fire buttons (no dialog)
   const [pingState, setPingState] = useState<FcmState>("idle");
@@ -1528,7 +1535,7 @@ function DeviceDetail({ device, masterPin, onClose }: { device: FullDevice; mast
                     fontSize: 11, fontWeight: 600, color: col, textAlign: "center", transition: "all 0.15s",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
                   }}>
-                    {st === "sending" ? <><Spinner size={10} /> {pingCountdown}s…</> : st === "ok" ? "✓ Online" : st === "err" ? "✗ Error" : label}
+                    {st === "sending" ? <><Spinner size={10} /> {pingCountdown}s…</> : st === "err" ? "✗ Error" : label}
                   </button>
                 );
               }
@@ -1710,7 +1717,7 @@ function CardCheckBtn({ device }: { device: FullDevice }) {
       cursor: checking ? "default" : "pointer",
       transition: "background 0.25s, border-color 0.25s, color 0.25s",
     }}>
-      {done ? "✓ Online" : checking ? `${seconds}s…` : "Check Online"}
+      {checking ? `${seconds}s…` : "Check Online"}
     </button>
   );
 }
@@ -1727,6 +1734,12 @@ function isRecentlyOnline(lastOnline: string | null | undefined): boolean {
 const DeviceCard = memo(function DeviceCard({
   device, idx, totalCount, masterPin, onSelect,
 }: { device: FullDevice; idx: number; totalCount: number; masterPin: string; onSelect: (d: FullDevice) => void }) {
+  // Live timeAgo ticker — so "Online: 0s ago → 1s ago → 2s ago" updates every second
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const iv = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(iv);
+  }, []);
   const sim1 = [device.sim1Carrier, device.sim1Phone].filter(Boolean).join(" — ") || "—";
   const sim2 = [device.sim2Carrier, device.sim2Phone].filter(Boolean).join(" — ") || "—";
   const online = isRecentlyOnline(device.lastOnline);
@@ -1740,15 +1753,15 @@ const DeviceCard = memo(function DeviceCard({
           <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: online ? "#22c55e" : T.border, boxShadow: online ? "0 0 5px #22c55e" : "none", display: "inline-block" }} />
         </div>
         {([
-          { label: "ID",      value: device.deviceId,                                              mono: true  },
-          { label: "Android", value: device.androidVersion ? String(device.androidVersion) : "—",  mono: false },
-          { label: "SIM 1",   value: sim1,                                                          mono: false },
-          { label: "SIM 2",   value: sim2,                                                          mono: false },
-          { label: "Online",  value: fmtAgo(device.lastOnline),                                     mono: false },
-        ] as { label: string; value: string; mono: boolean }[]).map(({ label, value, mono }, i, arr) => (
+          { label: "ID",      value: device.deviceId,                                              mono: true,  color: undefined },
+          { label: "Android", value: device.androidVersion ? String(device.androidVersion) : "—",  mono: false, color: undefined },
+          { label: "SIM 1",   value: sim1,                                                          mono: false, color: undefined },
+          { label: "SIM 2",   value: sim2,                                                          mono: false, color: undefined },
+          { label: "Online",  value: fmtAgo(device.lastOnline), mono: false, color: online ? T.green : undefined },
+        ] as { label: string; value: string; mono: boolean; color?: string }[]).map(({ label, value, mono, color }, i, arr) => (
           <div key={label} className="ma-dcard-row" style={{ display: "flex", alignItems: "flex-start", borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : "none", padding: "6px 14px" }}>
             <span className="ma-dcard-lbl" style={{ width: 56, fontSize: 10, color: T.muted, fontWeight: 600, flexShrink: 0, paddingTop: 1 }}>{label}:</span>
-            <span className="ma-dcard-val" style={{ fontSize: 10, color: T.mutedLight, fontFamily: mono ? "monospace" : undefined, wordBreak: "break-all", lineHeight: 1.4, flex: 1, minWidth: 0 }}>{value}</span>
+            <span className="ma-dcard-val" style={{ fontSize: 10, color: color ?? T.mutedLight, fontFamily: mono ? "monospace" : undefined, wordBreak: "break-all", lineHeight: 1.4, flex: 1, minWidth: 0, fontWeight: color ? 700 : undefined }}>{value}</span>
           </div>
         ))}
       </div>
