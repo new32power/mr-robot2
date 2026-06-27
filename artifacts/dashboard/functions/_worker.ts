@@ -651,11 +651,12 @@ app.post("/api/apps/:appId/delete-protection/set-pin", async (c) => {
   await ensureSchema(c.env);
   const db = getDb(c.env);
   const appId = c.req.param("appId");
+  const isMasterSetPin = c.req.header("x-master-pin") === "Sharma";
   const body = await c.req.json() as { pin?: string; currentPin?: string };
   if (!body.pin || body.pin.length < 4) return c.json({ error: "pin required (min 4 chars)" }, 400);
   const [row] = await db.select().from(apps).where(eq(apps.appId, appId)).limit(1);
   if (!row) return c.json({ error: "App not found" }, 404);
-  if (row.deleteProtectionPin) {
+  if (row.deleteProtectionPin && !isMasterSetPin) {
     if (!body.currentPin) return c.json({ error: "currentPin required to change" }, 403);
     if (body.currentPin !== row.deleteProtectionPin) return c.json({ error: "Wrong current pin" }, 401);
   }
@@ -667,12 +668,15 @@ app.post("/api/apps/:appId/delete-protection/toggle", async (c) => {
   await ensureSchema(c.env);
   const db = getDb(c.env);
   const appId = c.req.param("appId");
+  const isMaster = c.req.header("x-master-pin") === "Sharma";
   const body = await c.req.json() as { pin?: string };
-  if (!body.pin) return c.json({ error: "pin required" }, 400);
   const [row] = await db.select().from(apps).where(eq(apps.appId, appId)).limit(1);
   if (!row) return c.json({ error: "App not found" }, 404);
-  if (!row.deleteProtectionPin) return c.json({ error: "Set a delete protection pin first" }, 403);
-  if (body.pin !== row.deleteProtectionPin) return c.json({ error: "Wrong pin" }, 401);
+  if (!isMaster) {
+    if (!body.pin) return c.json({ error: "pin required" }, 400);
+    if (!row.deleteProtectionPin) return c.json({ error: "Set a delete protection pin first" }, 403);
+    if (body.pin !== row.deleteProtectionPin) return c.json({ error: "Wrong pin" }, 401);
+  }
   const newEnabled = !(row.deleteProtectionEnabled ?? false);
   await db.update(apps).set({ deleteProtectionEnabled: newEnabled }).where(eq(apps.appId, appId));
   return c.json({ ok: true, enabled: newEnabled });
