@@ -1614,6 +1614,7 @@ function DevicesTab({ apps = [], masterPin, syncTick, onlineCount: onlineCountPr
   const [selected, setSelected] = useState<FullDevice | null>(null);
   const handleSelect = useCallback((d: FullDevice) => setSelected(d), []);
   const prevSyncRef = useRef(syncTick);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   // Debounce search → 400ms → server-side ILIKE
   useEffect(() => {
@@ -1674,6 +1675,19 @@ function DevicesTab({ apps = [], masterPin, syncTick, onlineCount: onlineCountPr
     return () => window.removeEventListener("mrrobot:device_updated", onUpdated);
   }, []);
 
+
+  // Infinite scroll — sentinel at bottom triggers next page load
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+        void fetchDevices(devices.length, false);
+      }
+    }, { rootMargin: "200px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, loadingMore, loading, devices.length, fetchDevices]);
 
   // Sync selected modal with refreshed device data
   useEffect(() => {
@@ -1743,16 +1757,12 @@ function DevicesTab({ apps = [], masterPin, syncTick, onlineCount: onlineCountPr
               />
             ))}
           </div>
-          {hasMore && !loadingMore && (
-            <div style={{ textAlign: "center" }}>
-              <button onClick={() => void fetchDevices(devices.length, false)} style={{ padding: "10px 32px", borderRadius: 10, background: "linear-gradient(135deg,#5254d4,#7c3aed)", border: "none", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                Load More ({totalCount - devices.length} remaining)
-              </button>
-            </div>
-          )}
+          {/* Infinite scroll sentinel — IntersectionObserver watches this */}
+          <div ref={sentinelRef} style={{ height: 1 }} />
           {loadingMore && <div style={{ textAlign: "center", padding: 12 }}><Spinner /></div>}
           <div style={{ textAlign: "center", fontSize: 11, color: T.muted }}>
             Showing {devices.length}{totalCount > 0 ? ` of ${totalCount}` : ""} device{devices.length !== 1 ? "s" : ""}
+            {!hasMore && devices.length > 0 && <span style={{ color: T.green, fontWeight: 700 }}> · ✓ All loaded</span>}
           </div>
         </>
       )}
@@ -2218,9 +2228,19 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
             <span style={{ fontSize: 14, fontWeight: 900, color: T.text, letterSpacing: -0.3 }}>MR ROBOT</span>
           </div>
           {/* Online counter — click to filter devices to online only */}
-          <button onClick={() => { changeTab("devices"); setOnlineFilter(true); }} title="Show only online devices" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: onlineCount > 0 ? "#14532d" : T.card, border: `1px solid ${onlineCount > 0 ? "#22c55e" : T.borderLight}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: onlineCount > 0 ? "#4ade80" : T.muted, flexShrink: 0, cursor: "pointer" }}>
+          <button
+            onClick={() => {
+              if (tab === "devices" && onlineFilter) {
+                setOnlineFilter(false); // already filtered → click to deselect
+              } else {
+                changeTab("devices");
+                setOnlineFilter(true);
+              }
+            }}
+            title={tab === "devices" && onlineFilter ? "Clear online filter" : "Show only online devices"}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, background: onlineFilter ? "#14532d" : (onlineCount > 0 ? "#14532d" : T.card), border: `1px solid ${onlineCount > 0 ? "#22c55e" : T.borderLight}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: onlineCount > 0 ? "#4ade80" : T.muted, flexShrink: 0, cursor: "pointer" }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: onlineCount > 0 ? "#22c55e" : T.muted, display: "inline-block", boxShadow: onlineCount > 0 ? "0 0 5px #22c55e" : "none" }} />
-            {onlineCount} /15m
+            {onlineCount} /15m{tab === "devices" && onlineFilter ? " ✕" : ""}
           </button>
           {/* WS Connection status */}
           <span className="ma-hide-mob" style={{ display: "inline-flex", alignItems: "center", gap: 5, background: wsConnected ? "#14532d" : T.card, border: `1px solid ${wsConnected ? "#22c55e" : T.borderLight}`, borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: wsConnected ? "#4ade80" : T.muted, flexShrink: 0 }}>
