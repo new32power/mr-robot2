@@ -1962,37 +1962,6 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
               ))}
             </div>
 
-            {/* Ping All */}
-            <div style={{ background: T.card, borderRadius: 13, border: `1px solid ${T.borderLight}`, overflow: "hidden", marginBottom: 16 }}>
-              <div style={{ padding: "11px 16px", borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ color: T.accentLight }}><Ic.Wifi /></div><span style={{ fontWeight: 800, fontSize: 13, color: T.text }}>Check Online — All Devices</span></div>
-              </div>
-              <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ fontSize: 12, color: T.muted }}>Sends <b style={{ color: T.mutedLight }}>online_check</b> ping to all <b style={{ color: T.mutedLight }}>FCM-enabled</b> devices in batches of 100.</div>
-                {(pingState === "running" || pingState === "loading") && (
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: T.muted, marginBottom: 4 }}>
-                      <span>{pingState === "loading" ? "Fetching devices…" : "Sending pings…"}</span>
-                      {pingState === "running" && <span style={{ color: T.accentLight, fontWeight: 700 }}>{pingDone}/{pingTotal}</span>}
-                    </div>
-                    <div style={{ height: 4, background: T.border, borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ height: "100%", background: `linear-gradient(90deg,${T.accent},#8b5cf6)`, width: pingState === "loading" ? "12%" : `${pingTotal > 0 ? Math.round((pingDone / pingTotal) * 100) : 0}%`, transition: "width 0.3s" }} />
-                    </div>
-                  </div>
-                )}
-                {pingState === "done" && pingResult && (
-                  <div style={{ background: T.green + "18", border: `1px solid ${T.green}44`, borderRadius: 9, padding: "9px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ color: T.green, fontWeight: 700, fontSize: 13 }}>Ping complete!</span>
-                    <span style={{ fontSize: 12, color: T.muted }}><span style={{ color: T.green, fontWeight: 700 }}>{pingResult.ok}</span> sent{pingResult.fail > 0 && <> · <span style={{ color: T.red, fontWeight: 700 }}>{pingResult.fail}</span> failed</>}</span>
-                  </div>
-                )}
-                {pingState === "err" && <div style={{ background: T.red + "15", borderRadius: 9, padding: "9px 14px", color: T.red, fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}><Ic.Alert /> Fetch failed. Retry.</div>}
-                <button onClick={() => void handlePingAll()} disabled={pingBusy} style={{ padding: "11px 0", borderRadius: 9, border: "none", background: pingState === "done" ? T.green : pingBusy ? T.accentGlow : `linear-gradient(135deg,${T.accent},#8b5cf6)`, color: pingState === "done" ? "#fff" : pingBusy ? T.accentLight : "#fff", fontWeight: 800, fontSize: 13, cursor: pingBusy ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                  {pingState === "loading" ? <><Spinner /> Fetching…</> : pingState === "running" ? <><Spinner /> {pingDone}/{pingTotal}…</> : pingState === "done" ? <><Ic.Check /> Done</> : pingState === "err" ? "Error — Retry" : <><Ic.Wifi /> Ping All Devices</>}
-                </button>
-              </div>
-            </div>
-
             {/* Apps header + search */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 12, flexWrap: "wrap" }}>
               <div><div style={{ fontSize: 14, fontWeight: 800, color: T.text }}>Sub-Admin Apps</div><div style={{ fontSize: 11, color: T.muted, marginTop: 1 }}>Sorted by newest first</div></div>
