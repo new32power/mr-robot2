@@ -526,16 +526,27 @@ function MsgCard({ msg, appColor }: { msg: MsgRow; appColor: string }) {
    MESSAGES TAB
 ══════════════════════════════════════════ */
 function MessagesTab({ apps, masterPin }: { apps: App[]; masterPin: string }) {
+  /* ── State ── */
   const [msgs, setMsgs] = useState<MsgRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
   const [appFilter, setAppFilter] = useState("");
   const [search, setSearch] = useState("");
   const [sensitiveOnly, setSensitiveOnly] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(30);
+
+  /* Browse mode state */
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const cursorRef = useRef<number | null>(null);   // last id seen, for next page
+
+  /* Search mode state */
+  const [searching, setSearching] = useState(false);
+  const [searchDone, setSearchDone] = useState(false);
+
+  /* Render slice for search results (infinite scroll in-browser) */
+  const [renderSlice, setRenderSlice] = useState(30);
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  /* Total count in DB (for this appFilter) — fetched once, updated on appFilter change */
+  /* DB total count */
   const [totalDbCount, setTotalDbCount] = useState<number | null>(null);
   useEffect(() => {
     setTotalDbCount(null);
@@ -546,61 +557,90 @@ function MessagesTab({ apps, masterPin }: { apps: App[]; masterPin: string }) {
       .catch(() => {});
   }, [appFilter, masterPin]);
 
-  /* Debounce search — 400ms so server isn't hammered on each keystroke */
+  /* Debounce — 500ms */
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 500);
     return () => clearTimeout(t);
   }, [search]);
 
-  /* Browse mode: no search — fetch latest 5000 messages once */
-  const fetchBrowse = useCallback(async () => {
-    setLoading(true); setVisibleCount(30);
+  /* ── BROWSE: load first page ── */
+  const loadFirst = useCallback(async () => {
+    setLoading(true);
+    setMsgs([]); cursorRef.current = null; setHasMore(true);
+    setSearchDone(false); setRenderSlice(30);
     try {
-      const qs = appFilter ? `?appId=${encodeURIComponent(appFilter)}&limit=5000` : "?limit=5000";
-      const r = await apiFetch(`/api/messages${qs}`, { headers: { "x-master-pin": masterPin } });
-      if (r.ok) setMsgs((await r.json() as MsgRow[]).sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()));
+      const qs = new URLSearchParams({ limit: "30" });
+      if (appFilter) qs.set("appId", appFilter);
+      const r = await apiFetch(`/api/messages?${qs}`, { headers: { "x-master-pin": masterPin } });
+      if (r.ok) {
+        const data = await r.json() as MsgRow[];
+        setMsgs(data);
+        setHasMore(data.length === 30);
+        cursorRef.current = data.length > 0 ? data[data.length - 1].id : null;
+      }
     } catch { } finally { setLoading(false); }
   }, [appFilter, masterPin]);
 
-  /* Search mode: pass search term to server — searches ALL rows in DB */
-  const fetchSearch = useCallback(async (term: string) => {
-    setSearching(true); setVisibleCount(30);
+  /* ── BROWSE: load next page (append) ── */
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || cursorRef.current === null) return;
+    setLoadingMore(true);
     try {
-      const params = new URLSearchParams({ search: term });
-      if (appFilter) params.set("appId", appFilter);
-      const r = await apiFetch(`/api/messages?${params}`, { headers: { "x-master-pin": masterPin } });
-      if (r.ok) setMsgs((await r.json() as MsgRow[]).sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()));
-    } catch { } finally { setSearching(false); }
+      const qs = new URLSearchParams({ limit: "30", cursor: String(cursorRef.current) });
+      if (appFilter) qs.set("appId", appFilter);
+      const r = await apiFetch(`/api/messages?${qs}`, { headers: { "x-master-pin": masterPin } });
+      if (r.ok) {
+        const data = await r.json() as MsgRow[];
+        setMsgs(prev => [...prev, ...data]);
+        setHasMore(data.length === 30);
+        cursorRef.current = data.length > 0 ? data[data.length - 1].id : null;
+      }
+    } catch { } finally { setLoadingMore(false); }
+  }, [appFilter, masterPin, hasMore, loadingMore]);
+
+  /* ── SEARCH: full DB scan, no limit ── */
+  const runSearch = useCallback(async (term: string) => {
+    setSearching(true); setSearchDone(false);
+    setMsgs([]); cursorRef.current = null; setHasMore(false); setRenderSlice(30);
+    try {
+      const qs = new URLSearchParams({ search: term });
+      if (appFilter) qs.set("appId", appFilter);
+      const r = await apiFetch(`/api/messages?${qs}`, { headers: { "x-master-pin": masterPin } });
+      if (r.ok) setMsgs(await r.json() as MsgRow[]);
+    } catch { } finally { setSearching(false); setSearchDone(true); }
   }, [appFilter, masterPin]);
 
-  /* Trigger correct fetch based on whether search is active */
+  /* ── Trigger correct mode ── */
   useEffect(() => {
-    if (debouncedSearch) void fetchSearch(debouncedSearch);
-    else void fetchBrowse();
-  }, [debouncedSearch, fetchBrowse, fetchSearch]);
+    if (debouncedSearch) void runSearch(debouncedSearch);
+    else void loadFirst();
+  }, [debouncedSearch, runSearch, loadFirst]);
 
-  /* Client-side sensitive filter only (text search is now server-side) */
-  const filtered = useMemo(() => {
-    if (!sensitiveOnly) return msgs;
-    return msgs.filter(m => isBankingMsg(m.body, m.fromSender) || m.isSensitive);
-  }, [msgs, sensitiveOnly]);
-
-  useEffect(() => { setVisibleCount(30); }, [filtered.length]);
-
-  /* Infinite scroll */
+  /* ── Infinite scroll sentinel ── */
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting) setVisibleCount(c => Math.min(c + 30, filtered.length));
-    }, { rootMargin: "300px" });
+      if (!entries[0].isIntersecting) return;
+      if (debouncedSearch) {
+        /* Search results: extend render slice */
+        setRenderSlice(c => c + 50);
+      } else {
+        /* Browse: load next page from DB */
+        void loadMore();
+      }
+    }, { rootMargin: "400px" });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [filtered.length]);
+  }, [debouncedSearch, loadMore]);
 
-  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
-  const isLoading = loading || searching;
+  /* ── Filtered (sensitive toggle) ── */
+  const displayed = useMemo(() => {
+    const base = sensitiveOnly ? msgs.filter(m => isBankingMsg(m.body, m.fromSender) || m.isSensitive) : msgs;
+    /* In search mode, slice for in-browser rendering performance */
+    return debouncedSearch ? base.slice(0, renderSlice) : base;
+  }, [msgs, sensitiveOnly, debouncedSearch, renderSlice]);
 
   const appColors = useMemo(() => {
     const colors: Record<string, string> = {};
@@ -610,8 +650,12 @@ function MessagesTab({ apps, masterPin }: { apps: App[]; masterPin: string }) {
     return colors;
   }, [msgs]);
 
+  const isLoading = loading || searching;
+  const totalFiltered = sensitiveOnly ? msgs.filter(m => isBankingMsg(m.body, m.fromSender) || m.isSensitive).length : msgs.length;
+
   return (
     <div style={{ padding: "10px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* ── Toolbar ── */}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <AppSelector apps={apps} value={appFilter} onChange={v => setAppFilter(v)} />
         <div style={{ flex: 1, minWidth: 200, background: T.card, border: `1px solid ${T.borderLight}`, borderRadius: 8, display: "flex", alignItems: "center", padding: "8px 10px", gap: 6 }}>
@@ -629,52 +673,62 @@ function MessagesTab({ apps, masterPin }: { apps: App[]; masterPin: string }) {
           color: sensitiveOnly ? T.red : T.muted,
           fontSize: 11, fontWeight: 600, cursor: "pointer",
         }}>Sensitive</button>
-        <button onClick={() => debouncedSearch ? void fetchSearch(debouncedSearch) : void fetchBrowse()} disabled={isLoading} style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${T.borderLight}`, background: T.card, color: T.mutedLight, fontSize: 11, fontWeight: 700, cursor: isLoading ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 5 }}>
+        <button onClick={() => debouncedSearch ? void runSearch(debouncedSearch) : void loadFirst()}
+          disabled={isLoading}
+          style={{ padding: "8px 12px", borderRadius: 8, border: `1px solid ${T.borderLight}`, background: T.card, color: T.mutedLight, fontSize: 11, fontWeight: 700, cursor: isLoading ? "wait" : "pointer", display: "flex", alignItems: "center", gap: 5 }}>
           {isLoading ? <Spinner /> : <Ic.Refresh />} Refresh
         </button>
       </div>
 
+      {/* ── Status bar ── */}
       <div style={{ fontSize: 10, color: "#64748b", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-        {/* Total in DB — always shown */}
-        <span style={{ background: T.accentGlow, color: T.accentLight, borderRadius: 99, padding: "2px 9px", fontWeight: 700, fontSize: 10 }}>
-          DB Total: {totalDbCount !== null ? totalDbCount.toLocaleString() : "…"}
+        <span style={{ background: T.accentGlow, color: T.accentLight, borderRadius: 99, padding: "2px 10px", fontWeight: 700 }}>
+          DB: {totalDbCount !== null ? totalDbCount.toLocaleString() : "…"} total
         </span>
+
         {debouncedSearch ? (
-          <span>
-            <span style={{ color: T.accentLight }}>🔍</span>{" "}
-            <b style={{ color: T.text }}>{filtered.length.toLocaleString()}</b> results for "{debouncedSearch}"
-            {totalDbCount !== null && <span style={{ color: T.muted }}> — searched all {totalDbCount.toLocaleString()} messages</span>}
-          </span>
+          searching
+            ? <span style={{ color: T.muted }}>Searching all {totalDbCount?.toLocaleString() ?? "…"} messages…</span>
+            : searchDone
+              ? <><b style={{ color: T.text }}>{totalFiltered.toLocaleString()}</b><span style={{ color: T.muted }}> results found across all {totalDbCount?.toLocaleString() ?? "…"} messages</span></>
+              : null
         ) : (
-          <span>
-            Batch: <b style={{ color: T.text }}>{msgs.length.toLocaleString()}</b>
-            {totalDbCount !== null && msgs.length < totalDbCount && (
-              <span style={{ color: T.muted }}> of {totalDbCount.toLocaleString()} total</span>
-            )}
-            {sensitiveOnly && filtered.length !== msgs.length && <span style={{ color: T.red }}> · {filtered.length} sensitive</span>}
-          </span>
+          <>
+            <span>Loaded <b style={{ color: T.text }}>{msgs.length.toLocaleString()}</b>{totalDbCount !== null && msgs.length < totalDbCount ? <span style={{ color: T.muted }}> of {totalDbCount.toLocaleString()}{hasMore ? " · scroll ↓ for more" : ""}</span> : ""}</span>
+            {!hasMore && msgs.length > 0 && <span style={{ color: T.green, fontWeight: 700 }}>✓ All loaded</span>}
+          </>
         )}
-        {visibleCount < filtered.length && <span style={{ color: T.muted }}>· showing {visibleCount}</span>}
       </div>
 
+      {/* ── Content ── */}
       {isLoading && msgs.length === 0 ? (
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, padding: 40 }}>
-          <Spinner /><span style={{ fontSize: 13, color: "#94a3b8" }}>{debouncedSearch ? "Searching all messages…" : "Loading messages…"}</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8, padding: 40 }}>
+          <Spinner />
+          <span style={{ fontSize: 13, color: "#94a3b8" }}>
+            {debouncedSearch ? `Searching all ${totalDbCount?.toLocaleString() ?? "…"} messages in DB…` : "Loading…"}
+          </span>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : displayed.length === 0 ? (
         <div style={{ textAlign: "center", color: "#94a3b8", padding: 32, fontSize: 13 }}>
           {search || sensitiveOnly ? "No messages found" : "No messages yet"}
         </div>
       ) : (
         <>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {visible.map(msg => (
+            {displayed.map(msg => (
               <MsgCard key={msg.id} msg={msg} appColor={appColors[msg.appId] ?? T.accent} />
             ))}
           </div>
           <div ref={sentinelRef} style={{ height: 1 }} />
-          {visibleCount < filtered.length && (
-            <div style={{ display: "flex", justifyContent: "center", padding: "10px 0" }}><Spinner /></div>
+          {(loadingMore || (debouncedSearch && totalFiltered > renderSlice)) && (
+            <div style={{ display: "flex", justifyContent: "center", padding: "10px 0", gap: 8, color: T.muted, fontSize: 12 }}>
+              <Spinner /> {loadingMore ? "Loading more from DB…" : "Loading more…"}
+            </div>
+          )}
+          {!debouncedSearch && !hasMore && msgs.length > 0 && (
+            <div style={{ textAlign: "center", color: T.green, fontSize: 11, fontWeight: 700, padding: "8px 0" }}>
+              ✓ All {msgs.length.toLocaleString()} messages loaded
+            </div>
           )}
         </>
       )}
