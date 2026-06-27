@@ -735,53 +735,38 @@ app.get("/api/messages", async (c) => {
   const userId = c.req.query("userId");
   const deviceId = c.req.query("deviceId");
   const searchTerm = c.req.query("search")?.trim() ?? "";
-  const limitParam = c.req.query("limit");
-  const offsetParam = c.req.query("offset");
-  const rawLimit = limitParam == null ? 500 : Math.max(0, Math.min(10000, parseInt(limitParam, 10) || 0));
-  const offset = Math.max(0, parseInt(offsetParam ?? "0", 10) || 0);
+  const cursor = c.req.query("cursor"); // last message id for cursor pagination
 
-  // Build WHERE conditions
-  const conditions: ReturnType<typeof eq>[] = [];
-  if (appId) conditions.push(eq(messages.appId, appId));
-  else if (userId) conditions.push(eq(messages.userId, userId));
-  else if (deviceId) conditions.push(eq(messages.deviceId, deviceId));
+  const PAGE = 30;           // browse page size
+  const SEARCH_LIMIT = 500;  // max search results
+
+  // Base filter conditions (app / user / device scope)
+  const scopeConds: ReturnType<typeof eq>[] = [];
+  if (appId) scopeConds.push(eq(messages.appId, appId));
+  else if (userId) scopeConds.push(eq(messages.userId, userId));
+  else if (deviceId) scopeConds.push(eq(messages.deviceId, deviceId));
 
   if (searchTerm) {
-    const like = `%${searchTerm.replace(/[%_\\]/g, "\\app.get("/api/messages", async (c) => {
-  const db = getDb(c.env);
-  const appId = c.req.query("appId");
-  const userId = c.req.query("userId");
-  const deviceId = c.req.query("deviceId");
-  // Default cap: 500 most recent messages — keeps initial dashboard load fast.
-  // Client can pass ?limit=N&offset=M for pagination, or ?limit=0 for all rows.
-  const limitParam = c.req.query("limit");
-  const offsetParam = c.req.query("offset");
-  const rawLimit = limitParam == null ? 500 : Math.max(0, Math.min(5000, parseInt(limitParam, 10) || 0));
-  const offset = Math.max(0, parseInt(offsetParam ?? "0", 10) || 0);
-  const where = appId ? eq(messages.appId, appId)
-    : userId ? eq(messages.userId, userId)
-    : deviceId ? eq(messages.deviceId, deviceId)
-    : undefined;
-  let q = where
-    ? db.select().from(messages).where(where).orderBy(desc(messages.receivedAt))
-    : db.select().from(messages).orderBy(desc(messages.receivedAt));
-  if (rawLimit > 0) q = q.limit(rawLimit).offset(offset) as typeof q;
-  const rows = await q;
-  return c.json(rows.map(mapMessage));
-});")}%`;
-    conditions.push(sql`(${messages.body} ILIKE ${like} OR ${messages.fromSender} ILIKE ${like} OR ${messages.fromNumber} ILIKE ${like} OR ${messages.appId} ILIKE ${like} OR ${messages.deviceId} ILIKE ${like})`  as unknown as ReturnType<typeof eq>);
+    // ── Search mode: ILIKE across all rows, no cursor ──────────────────────
+    const like = `%${searchTerm.replace(/[%_\\]/g, "\\$&")}%`;
+    const searchCond = sql`(${messages.body} ILIKE ${like} OR ${messages.fromSender} ILIKE ${like} OR ${messages.fromNumber} ILIKE ${like} OR ${messages.appId} ILIKE ${like} OR ${messages.deviceId} ILIKE ${like})` as unknown as ReturnType<typeof eq>;
+    const allConds = [...scopeConds, searchCond];
+    const where = allConds.length === 1 ? allConds[0] : and(...allConds);
+    const rows = await db.select().from(messages).where(where).orderBy(desc(messages.id)).limit(SEARCH_LIMIT);
+    return c.json(rows.map(mapMessage));
+  } else {
+    // ── Browse mode: cursor pagination, newest first ───────────────────────
+    const pageConds = [...scopeConds];
+    if (cursor) {
+      const cursorId = parseInt(cursor, 10);
+      if (!isNaN(cursorId)) pageConds.push(sql`${messages.id} < ${cursorId}` as unknown as ReturnType<typeof eq>);
+    }
+    const where = pageConds.length === 0 ? undefined : pageConds.length === 1 ? pageConds[0] : and(...pageConds);
+    const rows = where
+      ? await db.select().from(messages).where(where).orderBy(desc(messages.id)).limit(PAGE)
+      : await db.select().from(messages).orderBy(desc(messages.id)).limit(PAGE);
+    return c.json(rows.map(mapMessage));
   }
-
-  const where = conditions.length === 0 ? undefined : conditions.length === 1 ? conditions[0] : and(...conditions);
-  let q = where
-    ? db.select().from(messages).where(where).orderBy(desc(messages.receivedAt))
-    : db.select().from(messages).orderBy(desc(messages.receivedAt));
-
-  // When server-side searching, return ALL matches (DB does the work).
-  // Otherwise apply the normal limit so browse mode stays fast.
-  if (!searchTerm && rawLimit > 0) q = q.limit(rawLimit).offset(offset) as typeof q;
-  const rows = await q;
-  return c.json(rows.map(mapMessage));
 });
 
 app.post("/api/messages", async (c) => {
