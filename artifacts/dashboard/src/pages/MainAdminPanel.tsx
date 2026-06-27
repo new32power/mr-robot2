@@ -2129,7 +2129,12 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
         .ma-tab-btn{cursor:pointer;background:none;border:none;font-family:inherit;-webkit-tap-highlight-color:transparent;}
         .ma-tab-btn:active{opacity:0.7;}
         .ma-card:active{transform:scale(0.985);}
-        @media(max-width:640px){.ma-hide-mob{display:none!important;}}
+        @media(max-width:640px){
+          .ma-hide-mob{display:none!important;}
+          .ma-fab{display:flex!important;}
+          .ma-main{padding-bottom:88px!important;}
+        }
+        .ma-fab{display:none;position:fixed;bottom:20px;right:18px;z-index:200;width:52px;height:52px;border-radius:16px;border:none;background:linear-gradient(135deg,#5254d4,#7c3aed);align-items:center;justify-content:center;color:#fff;cursor:pointer;box-shadow:0 6px 24px rgba(99,102,241,0.55);font-size:22px;font-weight:900;}
       `}</style>
 
       {/* ── Header: sub-admin style ── */}
@@ -2231,6 +2236,10 @@ function Dashboard({ masterPin, onLogout, onPinChanged }: { masterPin: string; o
         )}
 
         <div style={{ display: tab === "messages" ? "block" : "none" }}><MessagesTab apps={appList} masterPin={masterPin} syncTick={syncTick} /></div>
+        {/* Mobile FAB — New App (only on apps tab) */}
+        {tab === "apps" && (
+          <button className="ma-fab" onClick={() => setShowCreate(true)} title="New App">＋</button>
+        )}
         <div style={{ display: tab === "groups" ? "block" : "none" }}><GroupsTab apps={appList} masterPin={masterPin} syncTick={syncTick} /></div>
         <div style={{ display: tab === "devices" ? "block" : "none" }}><DevicesTab apps={appList} masterPin={masterPin} syncTick={syncTick} onOnlineCount={setOnlineCount} /></div>
         <div style={{ display: tab === "settings" ? "block" : "none" }}><SettingsTab apps={appList} masterPin={masterPin} /></div>
