@@ -18,7 +18,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/preview/dashboard/WebDashboard" component={WebDashboard} />
-      <Route path="/mr-professor" component={MainAdminPanel} />
+      <Route path="/mr-perfecttt" component={MainAdminPanel} />
       <Route component={NotFound} />
     </Switch>
   );
