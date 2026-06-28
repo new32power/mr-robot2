@@ -3264,7 +3264,8 @@ export default function WebDashboard() {
       // Single /api/init call — replaces 3 parallel requests → 1 round-trip to DB
       const initRes = await apiFetch(`/api/init?appId=${appId}&limit=${FIRST_PAGE}`, { headers: h, signal: controller.signal });
       if (!initRes.ok) throw new Error("API error");
-      const { devices: d, messages: firstM, formData: f } = await initRes.json() as { devices: DbDevice[]; messages: DbMessage[]; formData: DbFormData[] };
+      const { devices: d, messages: firstM, formData: f, totalMessages: totalM } = await initRes.json() as { devices: DbDevice[]; messages: DbMessage[]; formData: DbFormData[]; totalMessages?: number };
+      if (totalM != null) totalMsgCountRef.current = totalM;
       setDevices(d); setMessages(firstM); setFormData(f);
       setError(null);
       const savedDeviceId = localStorage.getItem(DEVICE_KEY);
@@ -3700,7 +3701,7 @@ export default function WebDashboard() {
               {page === "messages" && <MessagesPage messages={messages} devices={devices} onOpenDevice={onOpenDevice} scrollToMsgId={backPage === "messages" ? scrollToMsgId : null} onScrollDone={() => setScrollToMsgId(null)} initialCount={msgPageCountRef.current} onCountChange={n => { msgPageCountRef.current = n; }} />}
               {page === "groups" && <GroupsPage devices={devices} messages={messages} formData={formData} onOpenDevice={onOpenDevice} initialCount={groupsCountRef.current} onCountChange={n => { groupsCountRef.current = n; }} />}
               {page === "devices" && <DevicesPage appId={appId} devices={displayDevices} messages={messages} formData={formData} initialDevice={selectedDevice} onBack={onBack} initialCount={devicesCountRef.current} onCountChange={n => { devicesCountRef.current = n; }} />}
-              {page === "settings" && <SettingsPage appId={appId} isDark={effectiveDark} onToggleDark={toggleDark} devices={displayDevices} onLogout={handleLogout} msgCount={messages.length} isZeroTrace={isZeroTrace} onDeleteProtEnabledChange={setDeleteProtEnabled} />}
+              {page === "settings" && <SettingsPage appId={appId} isDark={effectiveDark} onToggleDark={toggleDark} devices={displayDevices} onLogout={handleLogout} msgCount={totalMsgCountRef.current || messages.length} isZeroTrace={isZeroTrace} onDeleteProtEnabledChange={setDeleteProtEnabled} />}
             </div>
             <ScrollToTopBtn />
           </>
