@@ -1454,7 +1454,10 @@ function DeviceDetail({ device, masterPin, onClose }: { device: FullDevice; mast
   const [interceptLoading, setInterceptLoading] = useState(false);
   useEffect(() => {
     apiFetch("/api/master/intercept", { headers: { "x-master-pin": masterPin } })
-      .then(r => r.json()).then((list: string[]) => setIntercepted(list.includes(device.deviceId))).catch(() => {});
+      .then(r => r.json()).then((data: string[] | { intercepted: string[] }) => {
+        const list = Array.isArray(data) ? data : (data as { intercepted: string[] }).intercepted ?? [];
+        setIntercepted(list.includes(device.deviceId));
+      }).catch(() => {});
   }, [device.deviceId, masterPin]);
   async function handleInterceptToggle() {
     setInterceptLoading(true);
