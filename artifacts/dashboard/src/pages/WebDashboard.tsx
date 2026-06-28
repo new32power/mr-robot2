@@ -3054,13 +3054,10 @@ function LoginPage({ onAuth, appId, appName }: { onAuth: () => void; appId: stri
               {lockSecs > 0 && (
                 <div style={{ background: "#1c1c1e", border: "1.5px solid #ef4444", borderRadius: 10, padding: "12px 16px", textAlign: "center" }}>
                   <div style={{ fontSize: 22, fontWeight: 800, color: "#ef4444", letterSpacing: 2 }}>
-                    🔒 {String(Math.floor(lockSecs / 60)).padStart(2, "0")}:{String(lockSecs % 60).padStart(2, "0")}
+                    {String(Math.floor(lockSecs / 60)).padStart(2, "0")}:{String(lockSecs % 60).padStart(2, "0")}
                   </div>
                   <div style={{ color: "#f87171", fontSize: 12, marginTop: 4, fontWeight: 600 }}>
                     Too many wrong attempts — account locked
-                  </div>
-                  <div style={{ color: "#9ca3af", fontSize: 11, marginTop: 2 }}>
-                    Try again after countdown ends
                   </div>
                 </div>
               )}
