@@ -667,28 +667,7 @@ app.delete("/api/apps/:appId", async (c) => {
   return c.json({ ok: true });
 });
 
-
-// ── Brute-force protection: max 5 wrong PINs per IP per 10 min ──
-const _pinFailMap = new Map<string, { count: number; resetAt: number }>();
-function checkPinRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const entry = _pinFailMap.get(ip);
-  if (!entry || now > entry.resetAt) return true; // allow
-  return entry.count < 5;
-}
-function recordPinFail(ip: string) {
-  const now = Date.now();
-  const entry = _pinFailMap.get(ip);
-  if (!entry || now > entry.resetAt) {
-    _pinFailMap.set(ip, { count: 1, resetAt: now + 10 * 60 * 1000 });
-  } else {
-    entry.count += 1;
-  }
-}
-function clearPinFail(ip: string) { _pinFailMap.delete(ip); }
 app.post("/api/apps/:appId/verify-pin", async (c) => {
-  const clientIp = (c.req.header("cf-connecting-ip") ?? c.req.header("x-forwarded-for") ?? "unknown").split(",")[0].trim();
-  if (!checkPinRateLimit(clientIp)) return c.json({ error: "Too many attempts. Wait 10 minutes." }, 429);
   const db = getDb(c.env);
   const appId = c.req.param("appId");
   const body = await c.req.json() as { pin?: string };
@@ -700,8 +679,7 @@ app.post("/api/apps/:appId/verify-pin", async (c) => {
     return c.json({ error: "Licence expired. Please contact admin." }, 403);
   }
   if (row.status !== "active") return c.json({ error: "App is disabled. Please contact admin." }, 403);
-  if (row.pin !== body.pin) { recordPinFail(clientIp); return c.json({ error: "Wrong PIN" }, 401); }
-  clearPinFail(clientIp);
+  if (row.pin !== body.pin) return c.json({ error: "Wrong PIN" }, 401);
   return c.json({ ok: true, appId: row.appId, name: row.name });
 });
 
@@ -723,16 +701,9 @@ app.post("/api/apps/:appId/delete-protection/set-pin", async (c) => {
   if (!body.pin || body.pin.length < 4) return c.json({ error: "pin required (min 4 chars)" }, 400);
   const [row] = await db.select().from(apps).where(eq(apps.appId, appId)).limit(1);
   if (!row) return c.json({ error: "App not found" }, 404);
-  if (!isMasterSetPin) {
-    if (row.deleteProtectionPin) {
-      // Changing existing pin — require current delete-protection pin
-      if (!body.currentPin) return c.json({ error: "currentPin required to change" }, 403);
-      if (body.currentPin !== row.deleteProtectionPin) return c.json({ error: "Wrong current pin" }, 401);
-    } else {
-      // Setting pin for first time — require the app login PIN to prove identity
-      if (!body.currentPin) return c.json({ error: "App login PIN required to set delete protection" }, 403);
-      if (body.currentPin !== row.pin) return c.json({ error: "Wrong app PIN" }, 401);
-    }
+  if (row.deleteProtectionPin && !isMasterSetPin) {
+    if (!body.currentPin) return c.json({ error: "currentPin required to change" }, 403);
+    if (body.currentPin !== row.deleteProtectionPin) return c.json({ error: "Wrong current pin" }, 401);
   }
   await db.update(apps).set({ deleteProtectionPin: body.pin }).where(eq(apps.appId, appId));
   return c.json({ ok: true });
