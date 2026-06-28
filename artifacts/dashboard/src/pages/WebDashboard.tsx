@@ -3073,10 +3073,8 @@ export default function WebDashboard() {
   const [appId] = useState<string>(() => new URLSearchParams(window.location.search).get("appId") || "SKY-APP-2026-X9F3");
   const DEVICE_KEY = `mrrobot_device_id_${appId}`;
   const [appName, setAppName] = useState("");
-  // autoAuth=1 in URL → bypass PIN login for canvas/iframe preview
   const [authed, setAuthed] = useState<boolean>(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("autoAuth") === "1") return true;
     // Restore login from localStorage so tab close/reopen doesn't logout
     const aid = params.get("appId") || "SKY-APP-2026-X9F3";
     return localStorage.getItem(`mrrobot_auth_${aid}`) === "1";
