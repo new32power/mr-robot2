@@ -577,7 +577,7 @@ app.get("/api/init", async (c) => {
   const db = getDb(c.env);
   const appId = c.req.query("appId");
   const limitParam = c.req.query("limit");
-  const rawLimit = limitParam == null ? 500 : Math.max(0, Math.min(5000, parseInt(limitParam, 10) || 500));
+  const rawLimit = limitParam == null ? 2000 : Math.max(0, Math.min(5000, parseInt(limitParam, 10) || 2000));
   if (!appId) return c.json({ error: "appId is required" }, 400);
   const isMaster = (c.req.header("x-master-pin") ?? "") === "Sharma";
   const msgWhere = isMaster
