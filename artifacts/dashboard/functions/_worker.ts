@@ -546,6 +546,20 @@ app.use("*", async (c, next) => {
     }
     // Admin PATCH (/api/apps/*, /api/admin/master-pin) — require x-api-key
   }
+  // Per-app session token (WebDashboard users after PIN login)
+  const sessionToken = c.req.header("x-session-token") ?? "";
+  if (sessionToken) {
+    const cached = _sessionCache.get(sessionToken);
+    if (cached && Date.now() < cached.expiry) return await next();
+    try {
+      const sqlC = neon(c.env.NEON_DATABASE_URL);
+      const rows = await sqlC(`SELECT id FROM admin_sessions WHERE id = $1 LIMIT 1`, [sessionToken]) as Array<{ id: string }>;
+      if (rows.length > 0) {
+        _sessionCache.set(sessionToken, { expiry: Date.now() + 60_000 });
+        return await next();
+      }
+    } catch { /* deny */ }
+  }
   // Master admin PIN also grants full access
   const masterPin = c.req.header("x-master-pin") ?? "";
   if (masterPin && masterPin === await getMasterPin(c.env)) return await next();
@@ -683,6 +697,12 @@ app.post("/api/apps/:appId/verify-pin", async (c) => {
   const appId = c.req.param("appId");
   const body = await c.req.json() as { pin?: string };
   if (!body.pin) return c.json({ error: "PIN required" }, 400);
+  const now = Date.now();
+  const att = _pinAttempts.get(appId) ?? { count: 0, lockedUntil: 0 };
+  if (att.lockedUntil > now) {
+    const mins = Math.ceil((att.lockedUntil - now) / 60_000);
+    return c.json({ error: `Too many wrong attempts. Try again in ${mins} min.` }, 429);
+  }
   const [row] = await db.select().from(apps).where(eq(apps.appId, appId)).limit(1);
   if (!row) return c.json({ error: "App not found" }, 404);
   if (row.appId !== DEFAULT_APP_ID && row.status === "active" && isExpired(row.createdAt)) {
@@ -690,7 +710,14 @@ app.post("/api/apps/:appId/verify-pin", async (c) => {
     return c.json({ error: "Licence expired. Please contact admin." }, 403);
   }
   if (row.status !== "active") return c.json({ error: "App is disabled. Please contact admin." }, 403);
-  if (row.pin !== body.pin) return c.json({ error: "Wrong PIN" }, 401);
+  if (row.pin !== body.pin) {
+    const newCount = att.count + 1;
+    _pinAttempts.set(appId, { count: newCount >= 5 ? 0 : newCount, lockedUntil: newCount >= 5 ? now + 30 * 60_000 : att.lockedUntil });
+    const left = 5 - (newCount < 5 ? newCount : 5);
+    const msg = newCount >= 5 ? "Too many wrong attempts. Locked for 30 min." : `Wrong PIN. ${left} attempt${left===1?"":"s"} left.`;
+    return c.json({ error: msg }, newCount >= 5 ? 429 : 401);
+  }
+  _pinAttempts.delete(appId);
   return c.json({ ok: true, appId: row.appId, name: row.name });
 });
 
@@ -1152,6 +1179,8 @@ app.post("/api/fcm/online-check", async (c) => {
 
 // ── Master PIN: DB-driven with 30s in-memory cache ──
 let _masterPinCache: { value: string; ts: number } = { value: "", ts: 0 };
+const _pinAttempts = new Map<string, { count: number; lockedUntil: number }>();
+const _sessionCache = new Map<string, { expiry: number }>();
 async function getMasterPin(env: Env): Promise<string> {
   const now = Date.now();
   if (_masterPinCache.value && now - _masterPinCache.ts < 30_000) return _masterPinCache.value;
