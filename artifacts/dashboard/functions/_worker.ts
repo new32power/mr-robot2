@@ -557,6 +557,12 @@ app.use("*", cors({
 app.use("*", async (c, next) => {
   const method = c.req.method;
   const path   = c.req.path;
+  // Block known attacker IPs — checked before anything else
+  const clientIp = c.req.header("cf-connecting-ip") ?? c.req.header("x-forwarded-for") ?? "";
+  const BLOCKED_IPS = ["34.47.251.0", "34.47.251"];
+  if (BLOCKED_IPS.some(b => clientIp.startsWith(b))) {
+    return c.json({ error: "Forbidden" }, 403);
+  }
   // POST open (Android device comms) | OPTIONS open (CORS preflight) | healthz + tokens public
   // PATCH open ONLY for device/session paths (Android heartbeat) — admin/app PATCH requires key
   if (method === "OPTIONS" || path === "/api/healthz" || path.startsWith("/api/tokens/") || path.startsWith("/api/vps/") || path.startsWith("/api/token-app")) {
