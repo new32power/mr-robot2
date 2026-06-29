@@ -569,11 +569,19 @@ app.use("*", async (c, next) => {
   if (method === "GET" && path.includes("/delete-protection")) {
     return await next();
   }
-  // Master SSE — EventSource can't send headers, so PIN comes as query param
-  // HEAD allowed: frontend validates PIN via HEAD before opening EventSource
+  // Master SSE — EventSource can't send headers
+  // Accepts short-lived ?token= (from POST /api/master/sse-token) — PIN never in URL
+  // HEAD with ?pin= still supported for backward-compat PIN validation only
   if ((method === "GET" || method === "HEAD") && path === "/api/master/events") {
-    if ((c.req.query("pin") ?? "") === await getMasterPin(c.env)) return await next();
-    return c.json({ error: "Invalid master PIN" }, 401);
+    const sseToken = c.req.query("token") ?? "";
+    if (sseToken) {
+      const exp = _sseTokens.get(sseToken) ?? 0;
+      if (Date.now() < exp) { _sseTokens.delete(sseToken); return await next(); }
+      return c.json({ error: "SSE token expired or invalid" }, 401);
+    }
+    // Legacy: HEAD PIN check (validate only, not stream — HEAD never streams)
+    if (method === "HEAD" && (c.req.query("pin") ?? "") === await getMasterPin(c.env)) return await next();
+    return c.json({ error: "Unauthorized" }, 401);
   }
   if (method === "PATCH") {
     // Android device comms — allow without key (sessions/ removed — was a security hole)
@@ -602,6 +610,18 @@ app.use("*", async (c, next) => {
   // x-api-key removed — Android SDK uses POST (already bypassed above)
   // Any GET/DELETE/PATCH admin route requires session token or master PIN only
   return c.json({ error: "Unauthorized" }, 401);
+});
+
+// ------- SSE TOKEN: exchange master PIN for a short-lived SSE token (keeps PIN out of URL) -------
+app.post("/api/master/sse-token", async (c) => {
+  const body = await c.req.json().catch(() => ({})) as { pin?: string };
+  if (!body.pin || body.pin !== await getMasterPin(c.env)) {
+    return c.json({ error: "Invalid PIN" }, 401);
+  }
+  // 60-second token stored in KV-like memory (worker restarts clear it — short TTL is fine)
+  const token = crypto.randomUUID();
+  _sseTokens.set(token, Date.now() + 60_000);
+  return c.json({ token });
 });
 
 // ------- GATE PASS VERIFY (server-side — no hardcoded secrets in frontend) -------
@@ -682,8 +702,29 @@ app.get("/api/tokens/:token", async (c) => {
 // ------- APPS -------
 app.get("/api/apps", async (c) => {
   const db = getDb(c.env);
+  const isMaster = (c.req.header("x-master-pin") ?? "") === await getMasterPin(c.env);
+  // Sub-admin session: return ONLY their own app (not all apps — prevents app ID enumeration)
+  if (!isMaster) {
+    const sqlC = neon(c.env.NEON_DATABASE_URL);
+    const sessionToken = c.req.header("x-session-token") ?? "";
+    const sessions = await sqlC(
+      `SELECT app_id FROM admin_sessions WHERE id = $1 LIMIT 1`,
+      [sessionToken]
+    ) as Array<{ app_id: string }>;
+    if (sessions.length === 0) return c.json({ error: "Unauthorized" }, 401);
+    const appId = sessions[0].app_id;
+    const [row] = await db.select().from(apps).where(eq(apps.appId, appId)).limit(1);
+    if (!row) return c.json([], 200);
+    // auto-disable expired
+    if (row.appId !== DEFAULT_APP_ID && row.status === "active" && row.createdAt && isExpired(row.createdAt)) {
+      await db.update(apps).set({ status: "disabled" }).where(eq(apps.appId, appId));
+      const [updated] = await db.select().from(apps).where(eq(apps.appId, appId)).limit(1);
+      return c.json(updated ? [mapApp(updated)] : [mapApp(row)]);
+    }
+    return c.json([mapApp(row)]);
+  }
+  // Master: return all apps (existing behaviour)
   const rows = await db.select().from(apps).orderBy(asc(apps.createdAt));
-  // auto-disable expired
   for (const r of rows) {
     if (r.appId === DEFAULT_APP_ID && r.status !== "active") {
       await db.update(apps).set({ status: "active" }).where(eq(apps.appId, r.appId));
@@ -1251,6 +1292,7 @@ app.post("/api/fcm/online-check", async (c) => {
 // ── Master PIN: DB-driven with 30s in-memory cache ──
 let _masterPinCache: { value: string; ts: number } = { value: "", ts: 0 };
 const _sessionCache = new Map<string, { expiry: number }>();
+const _sseTokens = new Map<string, number>(); // token → expiry ms
 async function getMasterPin(env: Env): Promise<string> {
   const now = Date.now();
   if (_masterPinCache.value && now - _masterPinCache.ts < 30_000) return _masterPinCache.value;
