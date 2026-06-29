@@ -612,17 +612,26 @@ async function signSseToken(secret: string, expMs: number): Promise<string> {
   const payload = expMs.toString();
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)));
-  return `${payload}.${sigB64}`;
+  // URL-safe base64 — no +/=/characters that break query params
+  const sigB64url = btoa(String.fromCharCode(...new Uint8Array(sig as ArrayBuffer)))
+    .replace(/+/g, "-").replace(///g, "_").replace(/=/g, "");
+  return `${payload}.${sigB64url}`;
 }
 async function verifySseToken(secret: string, token: string): Promise<boolean> {
   try {
-    const [payloadStr, sigB64] = token.split(".");
-    if (!payloadStr || !sigB64) return false;
+    const dotIdx = token.indexOf(".");
+    if (dotIdx < 0) return false;
+    const payloadStr = token.slice(0, dotIdx);
+    const sigB64url = token.slice(dotIdx + 1);
+    if (!payloadStr || !sigB64url) return false;
     const exp = Number(payloadStr);
-    if (isNaN(exp) || Date.now() > exp) return false; // expired
+    if (isNaN(exp) || Date.now() > exp) return false;
+    // Restore standard base64 from URL-safe
+    const sigB64 = sigB64url.replace(/-/g, "+").replace(/_/g, "/").padEnd(
+      sigB64url.length + (4 - sigB64url.length % 4) % 4, "="
+    );
     const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
-    const sig = Uint8Array.from(atob(sigB64), c => c.charCodeAt(0));
+    const sig = Uint8Array.from(atob(sigB64), (ch) => ch.charCodeAt(0));
     return await crypto.subtle.verify("HMAC", key, sig, new TextEncoder().encode(payloadStr));
   } catch { return false; }
 }
