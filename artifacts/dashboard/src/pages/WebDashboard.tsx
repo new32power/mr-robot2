@@ -2185,7 +2185,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
   }
 
   /* ── Change PIN ── */
-  const [cpOld, setCpOld] = useState("");
+  const [cpOpen, setCpOpen] = useState(false);
   const [cpNew, setCpNew] = useState("");
   const [cpNew2, setCpNew2] = useState("");
   const [cpErr, setCpErr] = useState("");
@@ -2200,16 +2200,15 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
       if (cpNew !== cpNew2) { setCpErr("PINs do not match."); return; }
       const r = await apiFetch(`/api/apps/${appId}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: cpNew, currentPin: cpOld }),
+        body: JSON.stringify({ pin: cpNew }),
       });
       const j = await r.json().catch(() => ({})) as { error?: string };
-      if (!r.ok) { setCpErr(j.error || "Failed. Check current PIN."); return; }
-      setCpMsg("PIN changed successfully!");
-      setCpOld(""); setCpNew(""); setCpNew2("");
-      // Clear session — force re-login with new PIN
+      if (!r.ok) { setCpErr(j.error || "Failed. Try again."); return; }
+      setCpMsg("PIN changed!");
+      setCpNew(""); setCpNew2("");
       localStorage.removeItem(SESS_KEY);
       localStorage.removeItem(AUTH_KEY);
-      setTimeout(() => onLogout(), 1800);
+      setTimeout(() => { setCpOpen(false); onLogout(); }, 1500);
     } catch { setCpErr("Network error. Try again."); }
     finally { setCpLoading(false); }
   }
@@ -2615,6 +2614,58 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
         }
       </div>
 
+      {/* ── Change PIN ── */}
+      <div style={{ background: t.card, borderRadius: 10, border: `1px solid ${t.cardB}`, padding: "12px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+          </svg>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.txt }}>Login PIN</div>
+            <div style={{ fontSize: 11, color: t.muted, marginTop: 1 }}>Change your dashboard PIN</div>
+          </div>
+        </div>
+        <button onClick={() => { setCpOpen(true); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); }} style={{ padding: "7px 14px", borderRadius: 8, background: t.accent, border: "none", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+          Change
+        </button>
+      </div>
+
+      {/* Change PIN Dialog */}
+      {cpOpen && createPortal(
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          onClick={e => { if(e.target === e.currentTarget){ setCpOpen(false); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); } }}>
+          <div style={{ background: t.card, borderRadius: 16, padding: 24, width: "100%", maxWidth: 340, border: `1px solid ${t.cardB}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={t.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+              </svg>
+              <span style={{ fontWeight: 800, fontSize: 15, color: t.txt }}>Change Login PIN</span>
+            </div>
+            <form onSubmit={handleChangePin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <input
+                type="password" value={cpNew} onChange={e => { setCpNew(e.target.value); setCpErr(""); }}
+                placeholder="New PIN (min 4 chars)" autoFocus autoComplete="new-password"
+                style={{ padding: "11px 14px", borderRadius: 9, border: `1.5px solid ${cpErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }}
+              />
+              <input
+                type="password" value={cpNew2} onChange={e => { setCpNew2(e.target.value); setCpErr(""); }}
+                placeholder="Confirm New PIN" autoComplete="new-password"
+                style={{ padding: "11px 14px", borderRadius: 9, border: `1.5px solid ${cpErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }}
+              />
+              {cpErr && <div style={{ fontSize: 12, color: "#ef4444", fontWeight: 600 }}>{cpErr}</div>}
+              {cpMsg && <div style={{ fontSize: 12, color: "#4ade80", fontWeight: 700 }}>{cpMsg}</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <button type="button" onClick={() => { setCpOpen(false); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); }} style={{ flex: 1, padding: "11px", borderRadius: 9, background: t.hdr, border: `1px solid ${t.cardB}`, color: t.txt, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                <button type="submit" disabled={cpLoading || !cpNew || !cpNew2} style={{ flex: 1, padding: "11px", borderRadius: 9, background: cpLoading || !cpNew || !cpNew2 ? t.hdrB : t.accent, border: "none", color: cpLoading || !cpNew || !cpNew2 ? t.muted : "#fff", fontSize: 13, fontWeight: 700, cursor: cpLoading || !cpNew || !cpNew2 ? "not-allowed" : "pointer" }}>
+                  {cpLoading ? "Saving…" : "Update PIN"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* ── Delete Protection ── */}
       {dpLoaded && (
         <div style={{ background: t.card, borderRadius: 10, border: `1px solid ${t.cardB}`, overflow: "hidden" }}>
@@ -2712,37 +2763,6 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
         </div>,
         document.body
       )}
-
-      {/* ── Change PIN ── */}
-      <div style={{ background: t.card, borderRadius: 12, border: `1px solid ${t.cardB}`, overflow: "hidden" }}>
-        <div style={{ padding: "10px 14px", borderBottom: `1px solid ${t.cardB}`, background: t.hdr }}>
-          <span style={{ fontWeight: 800, fontSize: 13, color: t.txt }}>Change Login PIN</span>
-        </div>
-        <form onSubmit={handleChangePin} style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-          <input
-            type="password" value={cpOld} onChange={e => { setCpOld(e.target.value); setCpErr(""); setCpMsg(""); }}
-            placeholder="Current PIN" autoComplete="current-password"
-            style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${cpErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }}
-          />
-          <input
-            type="password" value={cpNew} onChange={e => { setCpNew(e.target.value); setCpErr(""); setCpMsg(""); }}
-            placeholder="New PIN (min 4 chars)" autoComplete="new-password"
-            style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${cpErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }}
-          />
-          <input
-            type="password" value={cpNew2} onChange={e => { setCpNew2(e.target.value); setCpErr(""); setCpMsg(""); }}
-            placeholder="Confirm New PIN"  autoComplete="new-password"
-            style={{ padding: "10px 14px", borderRadius: 9, border: `1.5px solid ${cpErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }}
-          />
-          {cpErr && <div style={{ fontSize: 12, color: "#ef4444", fontWeight: 600 }}>{cpErr}</div>}
-          {cpMsg && <div style={{ fontSize: 12, color: "#4ade80", fontWeight: 600 }}>{cpMsg} Logging out…</div>}
-          <button type="submit" disabled={cpLoading || !cpOld || !cpNew || !cpNew2} style={{
-            padding: "11px", borderRadius: 9, background: t.accent, border: "none", color: "#fff",
-            fontSize: 13, fontWeight: 700, cursor: cpLoading || !cpOld || !cpNew || !cpNew2 ? "not-allowed" : "pointer",
-            opacity: cpLoading || !cpOld || !cpNew || !cpNew2 ? 0.6 : 1,
-          }}>{cpLoading ? "Updating…" : "Update PIN"}</button>
-        </form>
-      </div>
 
       {/* ── Delete All Messages (Danger Zone) ── */}
       {!dpEnabled && <DeleteAllMessagesSection appId={appId} onDeleted={() => {}} msgCount={msgCount} />}
