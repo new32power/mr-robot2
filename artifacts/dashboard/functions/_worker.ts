@@ -1560,6 +1560,16 @@ app.post("/api/master/apps/:appId/renew", async (c) => {
 app.get("/api/admin/sessions", async (c) => {
   const sqlClient = neon(c.env.NEON_DATABASE_URL);
   const appId = c.req.query("appId") ?? "";
+  const isMaster = c.req.header("x-master-pin") === await getMasterPin(c.env);
+  const sessionToken = c.req.header("x-session-token") ?? "";
+  if (!isMaster) {
+    if (!sessionToken) return c.json({ error: "Unauthorized" }, 401);
+    const valid = await sqlClient(
+      `SELECT id FROM admin_sessions WHERE id = $1 AND app_id = $2`,
+      [sessionToken, appId]
+    ) as Array<{id:string}>;
+    if (valid.length === 0) return c.json({ error: "Unauthorized" }, 401);
+  }
   const rows = await sqlClient(
     `SELECT id, login_time, last_active, user_agent, ip, device FROM admin_sessions WHERE app_id = $1 ORDER BY login_time DESC`,
     [appId],
