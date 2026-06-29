@@ -302,7 +302,6 @@ async function broadcast(env: Env, event: string, data: unknown): Promise<void> 
 }
 
   // =================== TELEGRAM NOTIFICATIONS ===================
-  const TG_BOT_TOKEN = "8899517356:AAHZujlxgR6pL5vXkrLtMZXzSXKR--7ljLw";
 
     // ── Settings cache: avoids 3 DB round-trips per notification ──
     const tgCache = { chatId: '-1004403318713', paused: false, focusApp: '', ts: 0 };
@@ -334,7 +333,7 @@ async function broadcast(env: Env, event: string, data: unknown): Promise<void> 
         await refreshTgCache(env);
         if (tgCache.paused) return;
         if (appId && tgCache.focusApp && tgCache.focusApp !== appId) return;
-        const token = env.TELEGRAM_BOT_TOKEN ?? TG_BOT_TOKEN;
+        const token = env.TELEGRAM_BOT_TOKEN ?? c.env?.TELEGRAM_BOT_TOKEN ?? "";
         const resp = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
