@@ -1474,7 +1474,7 @@ app.get("/api/master/stats", async (c) => {
 app.post("/api/master/telegram/setup", async (c) => {
   const guard = await checkMasterPin(c as never);
   if (guard) return guard;
-  const token = c.env.TELEGRAM_BOT_TOKEN ?? TG_BOT_TOKEN;
+  const token = c.env.TELEGRAM_BOT_TOKEN ?? "";
   const resp = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=10`);
   const tgData = await resp.json() as { ok: boolean; result?: Array<{ message?: { chat?: { id: number; first_name?: string } } }> };
   if (!tgData.ok || !tgData.result?.length) {
@@ -1968,7 +1968,7 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
 
     const chatId = msg.chat.id;
     const txt = msg.text.trim().replace(/@\w+/, ''); // strip @botname — required for channel commands
-    const token = c.env.TELEGRAM_BOT_TOKEN ?? TG_BOT_TOKEN;
+    const token = c.env.TELEGRAM_BOT_TOKEN ?? "";
     const sqlClient = neon(c.env.NEON_DATABASE_URL);
     const db = getDb(c.env);
 
