@@ -761,6 +761,10 @@ app.post("/api/apps", async (c) => {
 });
 
 app.patch("/api/apps/:appId", async (c) => {
+  // Requires master PIN OR valid session token
+  const isMaster = c.req.header("x-master-pin") === await getMasterPin(c.env);
+  const sessionToken = c.req.header("x-session-token") ?? "";
+  if (!isMaster && !sessionToken) return c.json({ error: "Unauthorized" }, 401);
   const db = getDb(c.env);
   const body = await c.req.json() as { name?: string; pin?: string; status?: string; currentPin?: string; };
   const patch: Partial<typeof apps.$inferInsert> = {};
