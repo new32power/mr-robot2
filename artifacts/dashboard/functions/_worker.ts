@@ -550,9 +550,6 @@ app.use("*", async (c, next) => {
       if (await verifySseToken(secret, sseToken)) return await next();
       return c.json({ error: "SSE token invalid or expired" }, 401);
     }
-    // Legacy bundle sends ?pin= — validate directly so old clients still work
-    const pinParam = c.req.query("pin") ?? "";
-    if (pinParam && pinParam === await getMasterPin(c.env)) return await next();
     return c.json({ error: "Unauthorized" }, 401);
   }
   if (method === "PATCH") {
@@ -750,6 +747,8 @@ app.get("/api/apps/:appId", async (c) => {
 });
 
 app.post("/api/apps", async (c) => {
+  const guard = await checkMasterPin(c as never);
+  if (guard) return guard;
   const db = getDb(c.env);
   const body = await c.req.json() as { appId?: string; name?: string; pin?: string; status?: string };
   if (!body.appId || !body.name) return c.json({ error: "appId and name are required" }, 400);
