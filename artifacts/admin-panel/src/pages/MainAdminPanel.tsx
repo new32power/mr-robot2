@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 
-const _API_KEY = import.meta.env.VITE_API_SECRET ?? "";
+// API key removed — x-api-key was in JS bundle (extractable via browser DevTools)
 function apiFetch(url: string, opts: RequestInit = {}): Promise<Response> {
   const h = new Headers(opts.headers);
-  if (_API_KEY) h.set("x-api-key", _API_KEY);
+  // x-api-key removed from frontend — master PIN sent per-request
   return fetch(url, { ...opts, headers: h });
 }
 
