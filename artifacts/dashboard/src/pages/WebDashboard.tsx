@@ -2122,7 +2122,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
   const [dpShowChangePinDialog, setDpShowChangePinDialog] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/apps/${appId}/delete-protection`)
+    fetch(`/api/apps/${appId}/delete-protection?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
       .then((d: { enabled: boolean; hasPin: boolean }) => {
         setDpEnabled(d.enabled); setDpHasPin(d.hasPin); setDpLoaded(true);
@@ -3256,6 +3256,15 @@ export default function WebDashboard() {
   const [darkMode, setDarkMode] = useState<boolean>(() => localStorage.getItem("mrrobot_dark") === "1");
   const [deleteProtEnabled, setDeleteProtEnabled] = useState(false);
   const [totalMsgCount, setTotalMsgCount] = useState(0);
+
+  // Load delete protection status on mount so ALL tabs see correct state immediately
+  useEffect(() => {
+    if (!authed) return;
+    apiFetch(`/api/apps/${appId}/delete-protection?t=${Date.now()}`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then((d: { enabled?: boolean } | null) => { if (d != null) setDeleteProtEnabled(!!d.enabled); })
+      .catch(() => {});
+  }, [authed, appId]);
 
   // Zero Trace = day mode only, no dark toggle
   const isZeroTrace = appName === "ZERO TRACE";
