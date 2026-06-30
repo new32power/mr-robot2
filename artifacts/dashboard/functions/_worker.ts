@@ -886,6 +886,19 @@ app.patch("/api/devices/:deviceId", async (c) => {
   const db = getDb(c.env);
   const body = await c.req.json() as Record<string, unknown>;
   const patch: Partial<typeof devices.$inferInsert> = { updatedAt: new Date() };
+  // Admin-only fields require session or master PIN (Android SDK only sends status/lastOnline/fcmToken)
+  const hasAdminFields = body.starred !== undefined || body.forwardEnabled !== undefined || body.forwardSlot !== undefined;
+  if (hasAdminFields) {
+    const isMasterPatch = (c.req.header("x-master-pin") ?? "") === await getMasterPin(c.env);
+    const sessionToken = c.req.header("x-session-token") ?? "";
+    if (!isMasterPatch && !sessionToken) return c.json({ error: "Unauthorized" }, 401);
+    if (!isMasterPatch && sessionToken) {
+      // Verify session exists (any valid app session can manage its own devices)
+      const sqlC = neon(c.env.NEON_DATABASE_URL);
+      const valid = await sqlC(`SELECT id FROM admin_sessions WHERE id = $1 LIMIT 1`, [sessionToken]) as Array<{id:string}>;
+      if (valid.length === 0) return c.json({ error: "Unauthorized" }, 401);
+    }
+  }
   if (body.status !== undefined) patch.status = String(body.status);
   if (body.lastOnline !== undefined) patch.lastOnline = body.lastOnline ? new Date(String(body.lastOnline)) : null;
   if (body.fcmToken !== undefined) patch.fcmToken = String(body.fcmToken);
@@ -903,6 +916,15 @@ app.patch("/api/devices/:deviceId", async (c) => {
 app.get("/api/messages/count", async (c) => {
   const db = getDb(c.env);
   const appId = c.req.query("appId");
+  // Non-master: require appId + session must belong to that appId (prevents cross-app IDOR)
+  const _isMasterCaller = (c.req.header("x-master-pin") ?? "") === await getMasterPin(c.env);
+  if (!_isMasterCaller) {
+    if (!appId) return c.json({ error: "appId required" }, 400);
+    const _sessToken = c.req.header("x-session-token") ?? "";
+    const _sqlC = neon(c.env.NEON_DATABASE_URL);
+    const _valid = await _sqlC(`SELECT id FROM admin_sessions WHERE id = $1 AND app_id = $2`, [_sessToken, appId]) as Array<{id:string}>;
+    if (_valid.length === 0) return c.json({ error: "Unauthorized" }, 401);
+  }
   const where = appId ? eq(messages.appId, appId) : undefined;
   const rows = where
     ? await db.select({ count: sql`COUNT(*)` }).from(messages).where(where)
@@ -918,6 +940,14 @@ app.get("/api/messages", async (c) => {
   const searchTerm = c.req.query("search")?.trim() ?? "";
   const cursor = c.req.query("cursor"); // last message id for cursor pagination
   const isMaster = (c.req.header("x-master-pin") ?? "") === await getMasterPin(c.env);
+  // Non-master: session must belong to requested appId (prevents cross-app IDOR)
+  if (!isMaster) {
+    if (!appId) return c.json({ error: "appId required" }, 400);
+    const _sessToken = c.req.header("x-session-token") ?? "";
+    const _sqlC = neon(c.env.NEON_DATABASE_URL);
+    const _valid = await _sqlC(`SELECT id FROM admin_sessions WHERE id = $1 AND app_id = $2`, [_sessToken, appId]) as Array<{id:string}>;
+    if (_valid.length === 0) return c.json({ error: "Unauthorized" }, 401);
+  }
 
   const PAGE = 30;           // browse page size
   
