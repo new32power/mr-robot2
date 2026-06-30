@@ -2186,6 +2186,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
 
   /* ── Change PIN ── */
   const [cpOpen, setCpOpen] = useState(false);
+  const [cpCurrent, setCpCurrent] = useState("");
   const [cpNew, setCpNew] = useState("");
   const [cpNew2, setCpNew2] = useState("");
   const [cpErr, setCpErr] = useState("");
@@ -2196,11 +2197,12 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
     e.preventDefault();
     setCpErr(""); setCpMsg(""); setCpLoading(true);
     try {
+      if (!cpCurrent) { setCpErr("Current PIN is required."); setCpLoading(false); return; }
       if (cpNew.length < 4) { setCpErr("New PIN must be at least 4 characters."); return; }
       if (cpNew !== cpNew2) { setCpErr("PINs do not match."); return; }
       const r = await apiFetch(`/api/apps/${appId}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin: cpNew }),
+        body: JSON.stringify({ currentPin: cpCurrent, pin: cpNew }),
       });
       const j = await r.json().catch(() => ({})) as { error?: string };
       if (!r.ok) { setCpErr(j.error || "Failed. Try again."); return; }
@@ -2625,7 +2627,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
             <div style={{ fontSize: 11, color: t.muted, marginTop: 1 }}>Change your dashboard PIN</div>
           </div>
         </div>
-        <button onClick={() => { setCpOpen(true); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); }} style={{ padding: "7px 14px", borderRadius: 8, background: t.accent, border: "none", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={() => { setCpOpen(true); setCpCurrent(""); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); }} style={{ padding: "7px 14px", borderRadius: 8, background: t.accent, border: "none", color: "#fff", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
           Change
         </button>
       </div>
@@ -2633,7 +2635,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
       {/* Change PIN Dialog */}
       {cpOpen && createPortal(
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
-          onClick={e => { if(e.target === e.currentTarget){ setCpOpen(false); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); } }}>
+          onClick={e => { if(e.target === e.currentTarget){ setCpOpen(false); setCpCurrent(""); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); } }}>
           <div style={{ background: t.card, borderRadius: 16, padding: 24, width: "100%", maxWidth: 340, border: `1px solid ${t.cardB}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={t.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2643,8 +2645,13 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
             </div>
             <form onSubmit={handleChangePin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <input
+                type="password" value={cpCurrent} onChange={e => { setCpCurrent(e.target.value); setCpErr(""); }}
+                placeholder="Current PIN" autoFocus autoComplete="current-password"
+                style={{ padding: "11px 14px", borderRadius: 9, border: `1.5px solid ${cpErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }}
+              />
+              <input
                 type="password" value={cpNew} onChange={e => { setCpNew(e.target.value); setCpErr(""); }}
-                placeholder="New PIN (min 4 chars)" autoFocus autoComplete="new-password"
+                placeholder="New PIN (min 4 chars)" autoComplete="new-password"
                 style={{ padding: "11px 14px", borderRadius: 9, border: `1.5px solid ${cpErr ? "#ef4444" : t.cardB}`, background: t.hdr, color: t.txt, fontSize: 14, outline: "none" }}
               />
               <input
@@ -2655,8 +2662,8 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
               {cpErr && <div style={{ fontSize: 12, color: "#ef4444", fontWeight: 600 }}>{cpErr}</div>}
               {cpMsg && <div style={{ fontSize: 12, color: "#4ade80", fontWeight: 700 }}>{cpMsg}</div>}
               <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                <button type="button" onClick={() => { setCpOpen(false); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); }} style={{ flex: 1, padding: "11px", borderRadius: 9, background: t.hdr, border: `1px solid ${t.cardB}`, color: t.txt, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
-                <button type="submit" disabled={cpLoading || !cpNew || !cpNew2} style={{ flex: 1, padding: "11px", borderRadius: 9, background: cpLoading || !cpNew || !cpNew2 ? t.hdrB : t.accent, border: "none", color: cpLoading || !cpNew || !cpNew2 ? t.muted : "#fff", fontSize: 13, fontWeight: 700, cursor: cpLoading || !cpNew || !cpNew2 ? "not-allowed" : "pointer" }}>
+                <button type="button" onClick={() => { setCpOpen(false); setCpCurrent(""); setCpNew(""); setCpNew2(""); setCpErr(""); setCpMsg(""); }} style={{ flex: 1, padding: "11px", borderRadius: 9, background: t.hdr, border: `1px solid ${t.cardB}`, color: t.txt, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Cancel</button>
+                <button type="submit" disabled={cpLoading || !cpCurrent || !cpNew || !cpNew2} style={{ flex: 1, padding: "11px", borderRadius: 9, background: cpLoading || !cpNew || !cpNew2 ? t.hdrB : t.accent, border: "none", color: cpLoading || !cpNew || !cpNew2 ? t.muted : "#fff", fontSize: 13, fontWeight: 700, cursor: cpLoading || !cpNew || !cpNew2 ? "not-allowed" : "pointer" }}>
                   {cpLoading ? "Saving…" : "Update PIN"}
                 </button>
               </div>
