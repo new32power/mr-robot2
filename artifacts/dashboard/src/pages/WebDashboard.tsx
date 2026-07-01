@@ -2437,19 +2437,38 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
                 <div style={{ fontSize: 10, color: t.muted, lineHeight: 1.4 }}>
                   You may need to enable "Install from unknown sources" in your phone settings.
                 </div>
-                <a
-                  href="https://host-2n2.pages.dev/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "10px 0", borderRadius: 9, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", fontWeight: 700, fontSize: 13, textDecoration: "none" }}
-                >
-                  Generate Shoot URL
-                </a>
               </div>
             </div>
           </div>
 
         </div>
+
+      {/* ── Generate Shoot URL ── */}
+      <div style={{ borderRadius: 12, padding: 2, background: "linear-gradient(135deg,#6366f1,#8b5cf6,#ec4899)", boxShadow: t === DT ? "0 0 24px rgba(139,92,246,0.35)" : "0 0 20px rgba(99,102,241,0.25)" }}>
+        <div style={{ borderRadius: 10, background: t.card, overflow: "hidden" }}>
+          <div style={{ padding: "11px 16px", borderBottom: `1px solid ${t.cardB}`, background: t === DT ? "linear-gradient(90deg,rgba(99,102,241,0.18) 0%,rgba(139,92,246,0.12) 100%)" : "linear-gradient(90deg,rgba(99,102,241,0.08) 0%,rgba(139,92,246,0.06) 100%)", display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 2px 8px rgba(99,102,241,0.45)" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </div>
+            <span style={{ fontWeight: 800, fontSize: 13, color: t.txt }}>Generate Shoot URL</span>
+            <span style={{ marginLeft: "auto", background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", borderRadius: 99, padding: "2px 8px", fontSize: 9, fontWeight: 800, letterSpacing: 0.5 }}>NEW</span>
+          </div>
+          <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
+              Create a Play Store-style download page for your Shoot app. Share the link with users so they can install directly without searching.
+            </div>
+            <a
+              href="https://host-2n2.pages.dev/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 0", borderRadius: 9, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", fontWeight: 800, fontSize: 13, textDecoration: "none", boxShadow: "0 4px 16px rgba(99,102,241,0.4)", letterSpacing: 0.3 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              Generate Shoot URL
+            </a>
+          </div>
+        </div>
+      </div>
 
       {/* ── Update Admin ── */}
       <div style={{ background: t.card, borderRadius: 10, border: `1px solid ${t.cardB}`, overflow: "hidden" }}>
