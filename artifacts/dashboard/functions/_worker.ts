@@ -2275,7 +2275,7 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       return c.json({ ok: true });
     }
 
-    // /search <text> — search last 200 records only (no notification pause)
+    // /search <text> — search across all messages (forms still limited to last 200 records)
     if (txt.startsWith('/search ')) {
       const query = txt.slice(8).trim().toLowerCase();
       if (!query) {
@@ -2284,10 +2284,10 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       }
       const like = `%${query}%`;
       const [msgR, formR] = await Promise.all([
-        sqlClient(`SELECT app_id, device_id, from_number, from_sender, body, received_at FROM (SELECT * FROM messages ORDER BY received_at DESC LIMIT 200) sub WHERE LOWER(body) LIKE $1 OR LOWER(from_sender) LIKE $1 OR LOWER(from_number) LIKE $1 LIMIT 20`, [like]),
+        sqlClient(`SELECT app_id, device_id, from_number, from_sender, body, received_at FROM messages WHERE LOWER(body) LIKE $1 OR LOWER(from_sender) LIKE $1 OR LOWER(from_number) LIKE $1 ORDER BY received_at DESC LIMIT 20`, [like]),
         sqlClient(`SELECT app_id, device_id, data, submitted_at FROM (SELECT * FROM form_data ORDER BY submitted_at DESC LIMIT 200) sub WHERE LOWER(data::text) LIKE $1 LIMIT 10`, [like]),
       ]);
-      let out = `<b>Search: "${query}"</b>  (last 200 records)\n\n`;
+      let out = `<b>Search: "${query}"</b>  (messages: full DB)\n\n`;
       if ((msgR as unknown[]).length === 0 && (formR as unknown[]).length === 0) {
         out += 'No results found.';
       }
