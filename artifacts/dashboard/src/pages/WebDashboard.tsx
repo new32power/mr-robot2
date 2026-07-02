@@ -933,8 +933,14 @@ function MessagesPage({
 
   const { visible: visibleMsgsFeed, sentinelRef: feedSentinel, loading: feedLoading, resetCount: resetFeed } = useInfiniteScroll(filtered, 20, initialCount, onCountChange);
 
-  // Reset to page 1 whenever search query or sensitive filter changes
-  useEffect(() => { resetFeed(20); }, [debouncedSearch, filterSensitive]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reset to page 1 whenever the user actually changes search query or sensitive filter —
+  // but NOT on initial mount, otherwise coming back from a device's details page would wipe
+  // out the previously-expanded item count and break scroll-position restore (back nav).
+  const skipFirstResetRef = useRef(true);
+  useEffect(() => {
+    if (skipFirstResetRef.current) { skipFirstResetRef.current = false; return; }
+    resetFeed(20);
+  }, [debouncedSearch, filterSensitive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Retry-aware scroll restore — see HomePage for rationale.
   useEffect(() => {
