@@ -974,8 +974,9 @@ app.get("/api/messages", async (c) => {
     if (c.get('sessionAppId') !== appId) return c.json({ error: "Unauthorized" }, 401);
   }
 
-  const PAGE = 30;           // browse page size
-  
+  // browse page size — respects ?limit= param (cap 2000), default 30
+  const PAGE = Math.min(Math.max(1, parseInt(c.req.query("limit") ?? "30", 10) || 30), 2000);
+
   // Base filter conditions (app / user / device scope)
   const scopeConds: ReturnType<typeof eq>[] = [];
   if (appId) scopeConds.push(eq(messages.appId, appId));
