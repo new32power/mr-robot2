@@ -3385,6 +3385,7 @@ export default function WebDashboard() {
   const [checkAllTotal, setCheckAllTotal] = useState(0);
   const [checkAllResult, setCheckAllResult] = useState<{ ok: number; fail: number } | null>(null);
   const [filterRecent, setFilterRecent] = useState(false);
+  const [filterFavorites, setFilterFavorites] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [, liveTick] = useState(0); // global 1s tick — drives live timeAgo on all device cards
@@ -3639,7 +3640,10 @@ export default function WebDashboard() {
 
   const totalDevices = devices.length;
   const recentCount = devices.filter(d => isRecent(d.lastOnline)).length;
-  const displayDevices = filterRecent ? devices.filter(d => isRecent(d.lastOnline)) : devices;
+  const favoritesCount = devices.filter(d => d.starred).length;
+  const displayDevices = devices
+    .filter(d => (filterRecent ? isRecent(d.lastOnline) : true))
+    .filter(d => (filterFavorites ? d.starred : true));
 
   async function handleCheckAll() {
     if (checkAllState === "running") return;
@@ -3774,6 +3778,28 @@ export default function WebDashboard() {
               </span>
               <span style={{ fontSize: 9, color: filterRecent ? "#166534" : "#86efac", fontWeight: 600, lineHeight: 1 }}>
                 /15m
+              </span>
+            </button>
+
+            {/* Favorites pill — clickable filter toggle, shows only starred devices */}
+            <button
+              onClick={() => setFilterFavorites(f => !f)}
+              title={filterFavorites ? "Show all devices" : "Show favorites only"}
+              style={{
+                display: "flex", alignItems: "center", gap: 5, flexShrink: 0,
+                background: filterFavorites ? "#f59e0b" : "#3a2a05",
+                border: `1px solid ${filterFavorites ? "#f59e0b" : "#92650a"}`,
+                borderRadius: 20, padding: "4px 10px",
+                cursor: "pointer",
+                boxShadow: filterFavorites ? "0 0 10px #f59e0b66" : "none",
+                transition: "all 0.15s",
+              }}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill={filterFavorites ? "#3a2a05" : "#f59e0b"} stroke={filterFavorites ? "#3a2a05" : "#f59e0b"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+              <span style={{ fontSize: 11, fontWeight: 700, color: filterFavorites ? "#3a2a05" : "#f59e0b", lineHeight: 1 }}>
+                {favoritesCount}
               </span>
             </button>
 
