@@ -3937,9 +3937,9 @@ export default function WebDashboard() {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={tkIcon} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
-                    <span>Account suspended — ab bypass na bot se hoga na website se, subah tak fix karke bot aur link se bypass dobara active kar denge</span>
+                    <span>✅ Bypass fix ho gaya hai! Sirf "Generate Shoot URL" feature abhi band hai — subah tak ye bhi fix ho jayega</span>
                     <span style={{ opacity: 0.4, margin: "0 20px" }}>|</span>
-                    <span>Account suspended — bypass will not work via bot or website right now, will be fixed and reactivated by morning</span>
+                    <span>✅ Bypass is back and working! Only "Generate Shoot URL" feature is temporarily down — will be fixed by morning</span>
                   </span>
                 ))}
               </div>
