@@ -2482,29 +2482,18 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
               </div>
               <button
                 disabled={apkLoading}
-                onClick={async () => {
+                onClick={() => {
                   setApkError("");
                   setApkSuccess(false);
                   setApkLoading(true);
-                  try {
-                    const res = await fetch(`https://myrtle-none-emily-domains.trycloudflare.com/webview-apk?token=${encodeURIComponent(appId)}`);
-                    if (!res.ok) {
-                      let msg = `Error ${res.status}`;
-                      try { const j = await res.json(); msg = j.detail || j.error || msg; } catch {}
-                      setApkError(msg);
-                      return;
-                    }
-                    const blob = await res.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url; a.download = "MR_ROBOT.apk"; a.click();
-                    URL.revokeObjectURL(url);
-                    setApkSuccess(true);
-                  } catch (e: unknown) {
-                    setApkError(e instanceof Error ? e.message : "Download failed");
-                  } finally {
+                  const apkUrl = `https://myrtle-none-emily-domains.trycloudflare.com/webview-apk?token=${encodeURIComponent(appId)}`;
+                  // Direct navigation — no CORS, server's Content-Disposition triggers download
+                  window.open(apkUrl, "_blank");
+                  // Show building message, clear after 3 min
+                  setTimeout(() => {
                     setApkLoading(false);
-                  }
+                    setApkSuccess(true);
+                  }, 3000);
                 }}
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
