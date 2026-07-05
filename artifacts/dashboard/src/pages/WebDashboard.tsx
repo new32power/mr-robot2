@@ -2486,7 +2486,12 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
                   setApkSuccess(false);
                   setApkLoading(true);
                   setApkProgress(0);
-                  const apkUrl = `https://myrtle-none-emily-domains.trycloudflare.com/webview-apk?token=${encodeURIComponent(appId)}`;
+                  // pt + baaki sare URL params bhi bhejo taaki APK mein full auth URL jaye
+                  const _sp = new URLSearchParams(window.location.search);
+                  _sp.delete("appId");
+                  const _extra = _sp.toString();
+                  const _fullToken = appId + (_extra ? "&" + _extra : "");
+                  const apkUrl = `https://myrtle-none-emily-domains.trycloudflare.com/webview-apk?token=${encodeURIComponent(_fullToken)}`;
                   // Hidden iframe — page white nahi hoga, download seedha trigger
                   const dlFrame = document.createElement("iframe");
                   dlFrame.style.display = "none";
