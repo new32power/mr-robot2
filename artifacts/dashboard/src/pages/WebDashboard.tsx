@@ -2527,7 +2527,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite", flexShrink: 0 }}>
                       <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                     </svg>
-                    APK ban raha hai... {apkProgress}%
+                    Processing... {apkProgress}%
                   </>
                 ) : (
                   <>
@@ -2555,7 +2555,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
                   borderRadius: 8, padding: "10px 12px", fontSize: 12,
                   color: "#22c55e", lineHeight: 1.5,
                 }}>
-                  ✓ APK taiyaar! Download shuru ho gaya — phone pe install karo.
+                  ✓ APK ready! Download started — install on your phone.
                 </div>
               )}
               <div style={{ fontSize: 10, color: t.muted, lineHeight: 1.4 }}>
