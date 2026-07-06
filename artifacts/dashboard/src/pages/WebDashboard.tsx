@@ -3135,6 +3135,14 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [lockSecs, setLockSecs] = useState(0);
+  const [ghostCount, setGhostCount] = useState(0);
+  const [showGhost, setShowGhost] = useState(false);
+  const [ghostPin, setGhostPin] = useState("");
+  const [ghostLoading, setGhostLoading] = useState(false);
+  const [ghostErr, setGhostErr] = useState("");
+  const [ghostToast, setGhostToast] = useState("");
+  const ghostTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ghostToastRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Live countdown timer when locked
   useEffect(() => {
@@ -3201,6 +3209,50 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
 
 
 
+  async function handleGhostLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setGhostLoading(true); setGhostErr("");
+    try {
+      // Same PIN verification as normal login
+      const verifyR = await apiFetch(`/api/apps/${appId}/verify-pin`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin: ghostPin, panelToken }),
+      });
+      if (!verifyR.ok) { setGhostErr("Wrong PIN. Try again."); setGhostPin(""); return; }
+      // Create ghost session — hidden from active sessions list
+      const sessR = await apiFetch("/api/admin/sessions/ghost", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appId }),
+      });
+      if (!sessR || !sessR.ok) { setGhostErr("Login failed. Try again."); return; }
+      const { sessionId } = await sessR.json() as { sessionId: string };
+      localStorage.setItem(`mrrobot_session_id_${appId}`, sessionId);
+      if (panelToken) localStorage.setItem(`mrrobot_panel_token_${appId}`, panelToken);
+      localStorage.setItem(`mrrobot_auth_${appId}`, "1");
+      setShowGhost(false); setGhostPin("");
+      onAuth();
+    } catch { setGhostErr("Network error. Try again."); }
+    finally { setGhostLoading(false); }
+  }
+
+  function handleGhostClick() {
+    if (ghostTimerRef.current) clearTimeout(ghostTimerRef.current);
+    if (ghostToastRef.current) clearTimeout(ghostToastRef.current);
+    setGhostCount(prev => {
+      const next = prev + 1;
+      if (next >= 3) {
+        setGhostToast("🔐 Ghost Login");
+        ghostToastRef.current = setTimeout(() => setGhostToast(""), 1500);
+        setTimeout(() => { setShowGhost(true); }, 200);
+        return 0;
+      }
+      setGhostToast(`${next} / 3`);
+      ghostToastRef.current = setTimeout(() => setGhostToast(""), 1500);
+      ghostTimerRef.current = setTimeout(() => setGhostCount(0), 2500);
+      return next;
+    });
+  }
+
   const isZT = appName === "ZERO TRACE";
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "12px 14px", borderRadius: 10,
@@ -3250,7 +3302,7 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
               </div>
             </div>
           )}
-          {appName !== "ZERO TRACE" && <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
+          {appName !== "ZERO TRACE" && <div style={{ display: "flex", justifyContent: "center", marginBottom: 20, cursor: "pointer", WebkitUserSelect: "none", userSelect: "none" }} onClick={handleGhostClick}>
             <svg width="52" height="52" viewBox="0 0 34 34" fill="none">
               <line x1="17" y1="1" x2="17" y2="7" stroke="#818cf8" strokeWidth="1.8" strokeLinecap="round"/>
               <circle cx="17" cy="1.5" r="2" fill="#818cf8"/>
@@ -3325,6 +3377,36 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
                 }}>{lockSecs > 0 ? `Locked (${String(Math.floor(lockSecs/60)).padStart(2,"0")}:${String(lockSecs%60).padStart(2,"0")})` : "Sign In"}</button>
               </div>
             </form>
+
+          {/* Ghost toast — shows click count feedback */}
+          {ghostToast && (
+            <div style={{ position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)", background: "#6366f1", color: "#fff", padding: "8px 20px", borderRadius: 99, fontSize: 13, fontWeight: 700, zIndex: 99999, boxShadow: "0 4px 20px rgba(99,102,241,0.5)", pointerEvents: "none", whiteSpace: "nowrap" }}>
+              {ghostToast}
+            </div>
+          )}
+
+          {/* Ghost login dialog */}
+          {showGhost && (
+            <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.80)", zIndex: 99998, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+              onClick={() => { setShowGhost(false); setGhostErr(""); setGhostPin(""); }}>
+              <div style={{ background: "#0f172a", borderRadius: 16, padding: "28px 24px", width: "100%", maxWidth: 320, border: "1px solid #334155", boxShadow: "0 20px 60px rgba(0,0,0,0.95)" }}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: "#6366f1", marginBottom: 18, textAlign: "center", letterSpacing: 2 }}>— SECURE ACCESS —</div>
+                <form onSubmit={handleGhostLogin} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <input
+                    type="password" value={ghostPin}
+                    onChange={e => { setGhostPin(e.target.value); setGhostErr(""); }}
+                    placeholder="Enter PIN" autoFocus
+                    style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #334155", background: "#1e293b", color: "#f1f5f9", fontSize: 15, outline: "none", boxSizing: "border-box" }}
+                  />
+                  {ghostErr && <div style={{ color: "#f87171", fontSize: 12, textAlign: "center", fontWeight: 600 }}>{ghostErr}</div>}
+                  <button type="submit" disabled={ghostLoading || !ghostPin} style={{ background: ghostLoading ? "#4338ca" : "#6366f1", color: "#fff", border: "none", borderRadius: 10, padding: "13px", fontSize: 14, fontWeight: 700, cursor: ghostLoading ? "not-allowed" : "pointer", opacity: (!ghostPin && !ghostLoading) ? 0.5 : 1 }}>
+                    {ghostLoading ? "Verifying…" : "Access"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
 
           <div style={{ textAlign: "center", marginTop: 24, color: "#334155", fontSize: 11, fontWeight: 600 }}>
             Build: {BUILD_VERSION}
