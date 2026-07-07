@@ -122,4 +122,18 @@ router.post("/apps/:appId/delete-protection/toggle", async (req, res) => {
   res.json({ ok: true, enabled: newEnabled });
 });
 
+
+router.post("/apps/:appId/regenerate-token", async (req, res) => {
+  const appId = String(req.params.appId ?? "");
+  // Verify by session token (must be logged in)
+  const sessionToken = req.headers["x-session-token"] as string | undefined;
+  if (!sessionToken) { res.status(401).json({ error: "Session token required" }); return; }
+  const app = await localDb.getApp(appId);
+  if (!app) { res.status(404).json({ error: "App not found" }); return; }
+  const { randomUUID } = await import("node:crypto");
+  const newToken = randomUUID();
+  await localDb.updateApp(appId, { panelToken: newToken });
+  res.json({ ok: true, panelToken: newToken });
+});
+
 export default router;
