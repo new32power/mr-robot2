@@ -2518,6 +2518,9 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
                     onPanelTokenChange?.(newTk);
                     setRegenState("done");
                     setRegenCountdown(10);
+                    // Auto-copy the new link immediately — user doesn't need to click anything
+                    const newUrl = `${window.location.origin}${window.location.pathname.split('/').slice(0,-1).join('/') || ''}/WebDashboard?appId=${appId}&pt=${newTk}`;
+                    navigator.clipboard.writeText(newUrl).then(() => { setRegenCopied(true); }).catch(() => {});
                     const iv = setInterval(() => {
                       setRegenCountdown(prev => {
                         if (prev <= 1) { clearInterval(iv); setRegenState("idle"); setRegenToken(""); setRegenCopied(false); return 10; }
@@ -2547,7 +2550,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#22c55e" }}>
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5, verticalAlign: "middle" }}><polyline points="20 6 9 17 4 12"/></svg>
-                  Naya link ready!
+                  New link ready — auto-copied!
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, background: regenCountdown <= 3 ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.12)", borderRadius: 20, padding: "3px 10px", border: `1px solid ${regenCountdown <= 3 ? "rgba(239,68,68,0.4)" : "rgba(245,158,11,0.3)"}` }}>
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={regenCountdown <= 3 ? "#ef4444" : "#f59e0b"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
