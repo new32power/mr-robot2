@@ -9,6 +9,7 @@ export const apps = pgTable("apps", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   deleteProtectionPin: text("delete_protection_pin"),
   deleteProtectionEnabled: boolean("delete_protection_enabled").notNull().default(false),
+  panelToken: text("panel_token"),
 }, (t) => ({
   appIdUq: uniqueIndex("apps_app_id_uq").on(t.appId),
 }));
