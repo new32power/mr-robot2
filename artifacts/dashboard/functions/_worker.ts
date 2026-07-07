@@ -2977,6 +2977,24 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
           }).catch(() => {});
         }
       } catch { /* silent */ }
+    } else if (data.startsWith('startreply:')) {
+      // Complaint notification "📝 Reply" button — lock app and prompt admin to type
+      const appId = data.slice('startreply:'.length);
+      try {
+        const appRows = await sqlClient(`SELECT name FROM apps WHERE app_id = $1`, [appId]) as {name:string}[];
+        const appName = appRows[0]?.name ?? appId;
+        await sqlClient(`CREATE TABLE IF NOT EXISTS tg_app_lock (chat_id TEXT PRIMARY KEY, app_id TEXT NOT NULL, app_name TEXT, locked_at TIMESTAMPTZ DEFAULT now())`);
+        await sqlClient(`INSERT INTO tg_app_lock (chat_id, app_id, app_name) VALUES ($1, $2, $3) ON CONFLICT (chat_id) DO UPDATE SET app_id=$2, app_name=$3, locked_at=now()`, [cqChatId, appId, appName]);
+        if (botToken) {
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ chat_id: cqChatId, parse_mode: "HTML",
+              text: `🔒 Locked to <b>${appName}</b>\n<code>${appId}</code>\n\nAb seedha reply type karo — /unlock se change karo.`,
+              reply_markup: { inline_keyboard: [[{ text: '🔓 Unlock', callback_data: 'tgunlock' }]] }
+            }),
+          }).catch(() => {});
+        }
+      } catch { /* silent */ }
     }
 
     return c.json({ ok: true });
