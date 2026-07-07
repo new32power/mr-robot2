@@ -3508,11 +3508,7 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
                 <div style={{background:"#1e293b",borderRadius:"4px 14px 14px 14px",
                   padding:"13px 16px",maxWidth:"82%",border:"1px solid #334155",lineHeight:1.6}}>
                   <div style={{fontSize:13,fontWeight:700,color:"#f1f5f9",marginBottom:6}}>
-                    {complaintLang==="hindi"
-                      ? "नमस्ते! आपका स्वागत है।"
-                      : complaintLang==="english"
-                      ? "Hello! Welcome to Support."
-                      : "Namaste! Swagat hai aapka."}
+                    {complaintLang==="hindi"?"नमस्ते! आपका स्वागत है।":"Hello! Welcome to Support."}
                   </div>
                   <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.75}}>
                     {complaintLang==="hindi"?(
@@ -3549,7 +3545,7 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
                 <div style={{background:"#1e293b",borderRadius:"4px 14px 14px 14px",
                   padding:"13px 16px",maxWidth:"82%",border:"1px solid #334155"}}>
                   <div style={{fontSize:13,color:"#f1f5f9"}}>
-                    Please choose your language — Bhasha chunein:
+                    Please choose your preferred language:
                   </div>
                 </div>
               </div>
