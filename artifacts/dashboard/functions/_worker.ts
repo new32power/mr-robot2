@@ -1851,8 +1851,12 @@ app.post("/api/master/apps/:appId/renew", async (c) => {
     const PERIOD_MS = days * DAY_MS;
     const oldCreated = new Date(row.createdAt).getTime();
     const oldExpiry = oldCreated + 30 * DAY_MS;
-    // If expired: fresh N days from now; else add N days to existing createdAt
-    newCreatedAt = new Date(oldExpiry > Date.now() ? oldCreated + PERIOD_MS : Date.now());
+    // If expired: back-date createdAt so that createdAt+30days = now+daysToAdd
+    // e.g. +1 day → createdAt = now-29d, expiry = now+1d
+    // If not expired: shift createdAt forward by PERIOD_MS → expiry += daysToAdd
+    newCreatedAt = new Date(oldExpiry > Date.now()
+      ? oldCreated + PERIOD_MS
+      : Date.now() - (30 - days) * DAY_MS);
   }
   const [updated] = await db.update(apps)
     .set({ createdAt: newCreatedAt, status: "active" })
