@@ -2818,17 +2818,30 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       const spaceIdx = afterCmd.indexOf(' ');
       const replyAppId = spaceIdx > 0 ? afterCmd.slice(0, spaceIdx) : afterCmd;
       const replyMsg  = spaceIdx > 0 ? afterCmd.slice(spaceIdx + 1).trim() : '';
+      // Helper: send confirmation using direct fetch — bypasses sendTelegram guards (paused/focus/cache)
+      const replyNotify = async (text: string) => {
+        const botToken = c.env.TELEGRAM_BOT_TOKEN ?? "";
+        // Try stored chatId first, fall back to sender's chat, then private chat with admin
+        const storedId = await tgChatId(c.env).catch(() => "");
+        const confirmChatId = storedId || String(chatId);
+        try {
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ chat_id: confirmChatId, text, parse_mode: "HTML" }),
+          });
+        } catch { /* silent fail */ }
+      };
       if (!replyAppId || !replyMsg) {
-        await sendTelegram(c.env, '❌ Usage: /reply &lt;appId&gt; &lt;message&gt;\nExample: /reply APP-XXX We are looking into your issue.');
+        await replyNotify('❌ Usage: /reply &lt;appId&gt; &lt;message&gt;\nExample: /reply APP-XXX We are looking into your issue.');
         return c.json({ ok: true });
       }
       try {
         await sqlClient(`CREATE TABLE IF NOT EXISTS complaint_replies (id SERIAL PRIMARY KEY, app_id TEXT NOT NULL, message TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT now())`);
         await sqlClient(`INSERT INTO complaint_replies (app_id, message) VALUES ($1, $2)`, [replyAppId, replyMsg]);
         const safeMsgPreview = replyMsg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        // Use sendTelegram — same mechanism as complaint notifications (known working)
-        await sendTelegram(c.env, `✅ Reply sent!\n📱 App: <code>${replyAppId}</code>\n💬 Message: "${safeMsgPreview}"`);
-      } catch (e) { await sendTelegram(c.env, `❌ /reply error: ${String(e)}`); }
+        await replyNotify(`✅ Reply sent!\n📱 App: <code>${replyAppId}</code>\n💬 "${safeMsgPreview}"`);
+      } catch (e) { await replyNotify(`❌ Error: ${String(e)}`); }
       return c.json({ ok: true });
     }
 
