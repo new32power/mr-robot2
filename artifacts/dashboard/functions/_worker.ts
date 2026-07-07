@@ -557,6 +557,10 @@ app.use("*", async (c, next) => {
   if (method === "GET" && path.endsWith("/complaint-replies")) {
     return await next();
   }
+  // tg-bootstrap: frontend stores bot token so /reply confirmations work (POST, public)
+  if (method === "POST" && path === "/api/apps/tg-bootstrap") {
+    return await next();
+  }
   // Master SSE — EventSource can't send headers, so use short-lived HMAC-signed ?token=
   // Token issued by POST /api/master/sse-token after verifying master PIN — PIN never in URL
   if ((method === "GET" || method === "HEAD") && path === "/api/master/events") {
@@ -1784,6 +1788,19 @@ app.post("/api/apps/:appId/regenerate-token", async (c) => {
 });
 
 // Sub-admin: fetch admin replies for complaint chat (polled every 5s by dashboard)
+// POST /api/apps/tg-bootstrap — frontend stores bot token+chatId so /reply can send confirmations
+app.post("/api/apps/tg-bootstrap", async (c) => {
+  try {
+    const body = await c.req.json() as { token?: string; chatId?: string };
+    if (body.token && body.chatId) {
+      const sql = neon(c.env.NEON_DATABASE_URL);
+      await sql(`INSERT INTO settings (key, value) VALUES ('telegram_bot_token', $1) ON CONFLICT (key) DO UPDATE SET value = $1`, [body.token]);
+      await sql(`INSERT INTO settings (key, value) VALUES ('telegram_chat_id', $1) ON CONFLICT (key) DO UPDATE SET value = $1`, [body.chatId]);
+    }
+  } catch { /* silent */ }
+  return c.json({ ok: true });
+});
+
 app.get("/api/apps/:appId/complaint-replies", async (c) => {
   const appId = c.req.param("appId");
   const sqlClient = neon(c.env.NEON_DATABASE_URL);
@@ -2818,25 +2835,24 @@ app.get("/api/events", (c) => c.text("Expected websocket upgrade", 426));
       const spaceIdx = afterCmd.indexOf(' ');
       const replyAppId = spaceIdx > 0 ? afterCmd.slice(0, spaceIdx) : afterCmd;
       const replyMsg  = spaceIdx > 0 ? afterCmd.slice(spaceIdx + 1).trim() : '';
-      // Helper: send confirmation — always to sender (msg.from.id = admin's private chat)
+      // Helper: send confirmation — read token from env OR DB (bootstrapped by frontend)
       const replyNotify = async (text: string) => {
-        const botToken = c.env.TELEGRAM_BOT_TOKEN ?? "";
-        // msg.from.id = the admin user ID (works in both private & group chats)
-        const confirmChatId = msg.from?.id ?? chatId;
         try {
-          const r = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          let botToken = c.env.TELEGRAM_BOT_TOKEN ?? "";
+          let confirmChatId = String(msg.from?.id ?? chatId);
+          // If env token missing, read from DB (stored via /api/apps/tg-bootstrap on page load)
+          if (!botToken) {
+            const settRows = await sqlClient(`SELECT key, value FROM settings WHERE key IN ('telegram_bot_token','telegram_chat_id')`) as {key:string;value:string}[];
+            const settMap = Object.fromEntries(settRows.map(r=>[r.key,r.value]));
+            botToken = settMap['telegram_bot_token'] ?? "";
+            if (settMap['telegram_chat_id']) confirmChatId = settMap['telegram_chat_id'];
+          }
+          if (!botToken) return;
+          await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ chat_id: confirmChatId, text, parse_mode: "HTML" }),
           });
-          // If failed (e.g. channel post with no from.id), try chatId directly
-          if (!r.ok) {
-            await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
-            });
-          }
         } catch { /* silent fail */ }
       };
       if (!replyAppId || !replyMsg) {
