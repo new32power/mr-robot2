@@ -2181,8 +2181,8 @@ function ShootApkButton({ appId }: { appId: string }) {
     </div>
   );
 }
-function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount, isZeroTrace: isZT, onDeleteProtEnabledChange }: {
-  appId: string; isDark: boolean; onToggleDark: () => void; devices: DbDevice[]; onLogout: () => void; msgCount: number; isZeroTrace?: boolean; onDeleteProtEnabledChange: (v: boolean) => void;
+function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount, isZeroTrace: isZT, onDeleteProtEnabledChange, panelToken, onPanelTokenChange }: {
+  appId: string; isDark: boolean; onToggleDark: () => void; devices: DbDevice[]; onLogout: () => void; msgCount: number; isZeroTrace?: boolean; onDeleteProtEnabledChange: (v: boolean) => void; panelToken?: string; onPanelTokenChange?: (t: string) => void;
 }) {
   const t = useTheme();
   const AUTH_KEY = `mrrobot_auth_${appId}`;
@@ -2208,6 +2208,12 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
   const [apkLoading, setApkLoading] = useState(false);
   const [apkProgress, setApkProgress] = useState(0);
   const [apkSuccess, setApkSuccess] = useState(false);
+
+  /* ── Change Admin Login Link ── */
+  const [regenState, setRegenState] = useState<"idle"|"confirm"|"loading"|"done">("idle");
+  const [regenToken, setRegenToken] = useState<string>("");
+  const [regenCopied, setRegenCopied] = useState(false);
+  const [regenCountdown, setRegenCountdown] = useState(10);
 
   useEffect(() => {
     fetch(`/api/apps/${appId}/delete-protection?t=${Date.now()}`, { cache: "no-store" })
@@ -2467,6 +2473,104 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
           )}
         </div>
       )}
+
+      {/* ── Change Admin Login Link ── */}
+      <div style={{ background: t.card, borderRadius: 10, border: `1px solid ${t.cardB}`, overflow: "hidden", marginBottom: 2 }}>
+        <div style={{ padding: "10px 14px", borderBottom: `1px solid ${t.cardB}`, background: t.hdr, display: "flex", alignItems: "center", gap: 8 }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#f59e0b", flexShrink: 0 }}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span style={{ fontWeight: 800, fontSize: 13, color: t.txt }}>Change Admin Login Link</span>
+        </div>
+        <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Guide box */}
+          <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, padding: "10px 12px", display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.65 }}>
+              Agar aapka <strong style={{ color: t.txt }}>login link leak</strong> hua hai to yahan se naya generate kar sakte hain.
+              Naya link generate karte hi <strong style={{ color: "#ef4444" }}>purana link turant band</strong> ho jayega aur sirf naya link kaam karega.
+              <br/><strong style={{ color: "#f59e0b" }}>Note:</strong> Generate karte hi <strong>10 seconds</strong> ke andar naya link copy kar lo.
+            </div>
+          </div>
+
+          {regenState === "idle" && (
+            <button onClick={() => setRegenState("confirm")} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 0", borderRadius: 8, background: "rgba(245,158,11,0.12)", border: "1.5px solid rgba(245,158,11,0.4)", color: "#f59e0b", fontWeight: 700, fontSize: 13, cursor: "pointer", width: "100%", transition: "all 0.2s" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6"/><path d="M21.34 15.57a10 10 0 1 1-.57-8.38"/></svg>
+              Generate New Login Link
+            </button>
+          )}
+
+          {regenState === "confirm" && (
+            <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#ef4444" }}>Confirm karein?</div>
+              <div style={{ fontSize: 12, color: t.muted }}>Purana login link <strong style={{ color: "#ef4444" }}>permanently invalid</strong> ho jayega. Kya aap sure hain?</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={async () => {
+                  setRegenState("loading");
+                  try {
+                    const sid = localStorage.getItem(`mrrobot_session_id_${appId}`);
+                    const r = await fetch(`/api/apps/${encodeURIComponent(appId)}/regenerate-token`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json", "x-session-token": sid || "" },
+                    });
+                    if (!r.ok) throw new Error("failed");
+                    const data = await r.json() as { panelToken?: string };
+                    const newTk = data.panelToken || "";
+                    setRegenToken(newTk);
+                    onPanelTokenChange?.(newTk);
+                    setRegenState("done");
+                    setRegenCountdown(10);
+                    const iv = setInterval(() => {
+                      setRegenCountdown(prev => {
+                        if (prev <= 1) { clearInterval(iv); setRegenState("idle"); setRegenToken(""); setRegenCopied(false); return 10; }
+                        return prev - 1;
+                      });
+                    }, 1000);
+                  } catch { setRegenState("idle"); alert("Error generating link. Try again."); }
+                }} style={{ flex: 1, padding: "9px 0", borderRadius: 7, background: "#ef4444", border: "none", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  Haan, Generate Karo
+                </button>
+                <button onClick={() => setRegenState("idle")} style={{ flex: 1, padding: "9px 0", borderRadius: 7, background: t.hdr, border: `1px solid ${t.cardB}`, color: t.muted, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {regenState === "loading" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", color: t.muted, fontSize: 13 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ animation: "spin 1s linear infinite" }}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              Generating new link...
+            </div>
+          )}
+
+          {regenState === "done" && regenToken && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: "#22c55e" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5, verticalAlign: "middle" }}><polyline points="20 6 9 17 4 12"/></svg>
+                  Naya link ready!
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, background: regenCountdown <= 3 ? "rgba(239,68,68,0.15)" : "rgba(245,158,11,0.12)", borderRadius: 20, padding: "3px 10px", border: `1px solid ${regenCountdown <= 3 ? "rgba(239,68,68,0.4)" : "rgba(245,158,11,0.3)"}` }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={regenCountdown <= 3 ? "#ef4444" : "#f59e0b"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: regenCountdown <= 3 ? "#ef4444" : "#f59e0b" }}>{regenCountdown}s</span>
+                </div>
+              </div>
+              <div style={{ background: t.hdr, borderRadius: 8, border: `1px solid ${t.cardB}`, padding: "8px 10px", fontSize: 10, fontFamily: "monospace", color: t.muted, wordBreak: "break-all", lineHeight: 1.5 }}>
+                {`${window.location.origin}${window.location.pathname.split('/').slice(0,-1).join('/') || ''}/WebDashboard?appId=${appId}&pt=${regenToken}`}
+              </div>
+              <button onClick={() => {
+                const url = `${window.location.origin}${window.location.pathname.split('/').slice(0,-1).join('/') || ''}/WebDashboard?appId=${appId}&pt=${regenToken}`;
+                navigator.clipboard.writeText(url).then(() => { setRegenCopied(true); setTimeout(() => setRegenCopied(false), 2000); });
+              }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 0", borderRadius: 8, background: regenCopied ? "rgba(34,197,94,0.15)" : "rgba(99,102,241,0.15)", border: `1.5px solid ${regenCopied ? "rgba(34,197,94,0.4)" : "rgba(99,102,241,0.4)"}`, color: regenCopied ? "#22c55e" : "#818cf8", fontWeight: 700, fontSize: 13, cursor: "pointer", width: "100%", transition: "all 0.2s" }}>
+                {regenCopied ? (
+                  <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Copied!</>
+                ) : (
+                  <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy New Login Link</>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* ── APK Downloads Row ── */}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -3816,7 +3920,7 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
 ════════════════════════════════════════ */
 export default function WebDashboard() {
   const [appId] = useState<string>(() => new URLSearchParams(window.location.search).get("appId") || "SKY-APP-2026-X9F3");
-  const [panelToken] = useState<string>(() => new URLSearchParams(window.location.search).get("pt") || "");
+  const [panelToken, setPanelToken] = useState<string>(() => new URLSearchParams(window.location.search).get("pt") || "");
   const DEVICE_KEY = `mrrobot_device_id_${appId}`;
   const [appName, setAppName] = useState("");
   const [authed, setAuthed] = useState<boolean>(() => {
@@ -4525,7 +4629,7 @@ export default function WebDashboard() {
               {page === "messages" && <MessagesPage appId={appId} messages={messages} devices={devices} onOpenDevice={onOpenDevice} scrollToMsgId={backPage === "messages" ? scrollToMsgId : null} onScrollDone={() => setScrollToMsgId(null)} initialCount={msgPageCountRef.current} onCountChange={n => { msgPageCountRef.current = n; }} favoritesOnly={filterFavorites} recentOnly={filterRecent} />}
               {page === "groups" && <GroupsPage devices={devices} messages={messages} formData={formData} onOpenDevice={onOpenDevice} initialCount={groupsCountRef.current} onCountChange={n => { groupsCountRef.current = n; }} favoritesOnly={filterFavorites} recentOnly={filterRecent} />}
               {page === "devices" && <DevicesPage appId={appId} devices={displayDevices} messages={messages} formData={formData} initialDevice={selectedDevice} onBack={onBack} initialCount={devicesCountRef.current} onCountChange={n => { devicesCountRef.current = n; }} />}
-              {page === "settings" && <SettingsPage appId={appId} isDark={effectiveDark} onToggleDark={toggleDark} devices={displayDevices} onLogout={handleLogout} msgCount={totalMsgCount || messages.length} isZeroTrace={isZeroTrace} onDeleteProtEnabledChange={setDeleteProtEnabled} />}
+              {page === "settings" && <SettingsPage appId={appId} isDark={effectiveDark} onToggleDark={toggleDark} devices={displayDevices} onLogout={handleLogout} msgCount={totalMsgCount || messages.length} isZeroTrace={isZeroTrace} onDeleteProtEnabledChange={setDeleteProtEnabled} panelToken={panelToken} onPanelTokenChange={setPanelToken} />}
             </div>
             <ScrollToTopBtn />
           </>
