@@ -992,6 +992,37 @@ function MessagesPage({
           fontSize: 11, fontWeight: 600, cursor: "pointer",
         }}>Sensitive</button>
       </div>
+      {/* ── Message count stats bar ── */}
+      {!searching && filtered.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, paddingLeft: 2, paddingBottom: 2 }}>
+          {debouncedSearch ? (
+            <>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.accent }}>
+                {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+              </span>
+              <span style={{ fontSize: 11, color: t.muted }}>·</span>
+              <span style={{ fontSize: 11, color: t.muted }}>
+                Total {messages.length} messages
+              </span>
+            </>
+          ) : (
+            <>
+              <span style={{ fontSize: 11, fontWeight: 700, color: t.muted }}>
+                {filtered.length !== messages.length
+                  ? <>{filtered.length} <span style={{ fontWeight: 400 }}>of</span> {messages.length} messages</>
+                  : <>{messages.length} messages</>
+                }
+              </span>
+              {visibleMsgsFeed.length < filtered.length && (
+                <>
+                  <span style={{ fontSize: 11, color: t.muted }}>·</span>
+                  <span style={{ fontSize: 11, color: t.muted }}>Showing {visibleMsgsFeed.length}</span>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {debouncedSearch && searching && filtered.length === 0
         ? <div style={{ textAlign: "center", color: "#94a3b8", padding: 32, fontSize: 13 }}>Searching all messages…</div>
         : filtered.length === 0
