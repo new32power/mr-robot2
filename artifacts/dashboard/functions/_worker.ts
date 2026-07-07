@@ -1755,6 +1755,29 @@ app.post("/api/master/apps/:appId/regenerate-token", async (c) => {
   return c.json({ ok: true, panelToken: newToken });
 });
 
+// Sub-admin: rotate own panel token — session authenticated (x-session-token header)
+// New token invalidates the old login link; all OTHER sessions are dropped so leaked
+// links cannot be reused. The caller's own session is preserved so they stay logged in.
+app.post("/api/apps/:appId/regenerate-token", async (c) => {
+  const appId = c.req.param("appId");
+  const sessionToken = c.req.header("x-session-token") ?? "";
+  if (!sessionToken) return c.json({ error: "Unauthorized" }, 401);
+  const sqlClient = neon(c.env.NEON_DATABASE_URL);
+  const sess = await sqlClient(
+    `SELECT id FROM admin_sessions WHERE id = $1 AND app_id = $2 LIMIT 1`,
+    [sessionToken, appId]
+  ) as Array<{ id: string }>;
+  if (sess.length === 0) return c.json({ error: "Unauthorized" }, 401);
+  const db = getDb(c.env);
+  const [row] = await db.select().from(apps).where(eq(apps.appId, appId)).limit(1);
+  if (!row) return c.json({ error: "App not found" }, 404);
+  const newToken = crypto.randomUUID();
+  await db.update(apps).set({ panelToken: newToken }).where(eq(apps.appId, appId));
+  // Keep the current session; invalidate all others so leaked links stop working.
+  await sqlClient(`DELETE FROM admin_sessions WHERE app_id = $1 AND id != $2`, [appId, sessionToken]);
+  return c.json({ ok: true, panelToken: newToken });
+});
+
 // Master admin: renew app licence +30 days — requires x-master-pin header
 app.post("/api/master/apps/:appId/renew", async (c) => {
   const guard = await checkMasterPin(c as never);
