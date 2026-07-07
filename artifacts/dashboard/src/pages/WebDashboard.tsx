@@ -3516,13 +3516,17 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
                   </div>
                   <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.75}}>
                     {complaintLang==="hindi"?(
-                      <>Aapka Token: <span style={{color:"#818cf8",fontFamily:"monospace",fontWeight:700,
+                      <>आपका टोकन: <span style={{color:"#818cf8",fontFamily:"monospace",fontWeight:700,
                         background:"#0f172a",padding:"2px 8px",borderRadius:5,fontSize:11}}>{appId}</span>
-                      <br/>Main aapki kisi bhi samasya mein madad karne ke liye yahaan hoon.</> 
-                    ):(
+                      <br/>मैं आपकी किसी भी समस्या में मदद करने के लिए यहाँ हूँ।</> 
+                    ):complaintLang==="english"?(
                       <>Your Token: <span style={{color:"#818cf8",fontFamily:"monospace",fontWeight:700,
                         background:"#0f172a",padding:"2px 8px",borderRadius:5,fontSize:11}}>{appId}</span>
                       <br/>I am here to assist you with any issue you may have.</> 
+                    ):(
+                      <>Aapka Token: <span style={{color:"#818cf8",fontFamily:"monospace",fontWeight:700,
+                        background:"#0f172a",padding:"2px 8px",borderRadius:5,fontSize:11}}>{appId}</span>
+                      <br/>Main aapki kisi bhi samasya mein madad karne ke liye yahaan hoon.</> 
                     )}
                   </div>
                 </div>
