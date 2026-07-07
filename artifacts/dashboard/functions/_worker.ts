@@ -1200,6 +1200,24 @@ app.delete("/api/messages/:id", async (c) => {
   return c.json({ ok: true });
 });
 
+// Bulk delete ALL messages for an appId — single SQL query, very fast
+app.delete("/api/messages", async (c) => {
+  const appId = c.req.query("appId");
+  if (!appId) return c.json({ error: "appId required" }, 400);
+  const isMaster = (c.req.header("x-master-pin") ?? "") === await getMasterPin(c.env);
+  if (!isMaster) {
+    const st = c.req.header("x-session-token") ?? "";
+    if (!st) return c.json({ error: "Unauthorized" }, 401);
+    if (c.get("sessionAppId") !== appId) return c.json({ error: "Unauthorized" }, 401);
+  }
+  const dpCheck = await requireDeleteProtection(c, appId, getDb(c.env));
+  if (dpCheck) return dpCheck;
+  const db = getDb(c.env);
+  const result = await db.delete(messages).where(eq(messages.appId, appId)).returning({ id: messages.id });
+  await broadcast(c.env, "bulk_deleted", { appId, count: result.length });
+  return c.json({ ok: true, deleted: result.length });
+});
+
 // Delete a single device by deviceId + cascade its messages and form data
 app.delete("/api/devices/:deviceId", async (c) => {
   const db = getDb(c.env);
