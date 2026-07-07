@@ -3406,7 +3406,16 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
       await fetch("https://api.telegram.org/bot8954718163:AAEqXGTNDGF3a3pTIP_TwxZb_1opKqB6Rrs/sendMessage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: "8711198416", text, parse_mode: "Markdown" }),
+        body: JSON.stringify({
+          chat_id: "8711198416",
+          text,
+          parse_mode: "Markdown",
+          reply_markup: {
+            inline_keyboard: [[
+              { text: "📝 Reply to this complaint", callback_data: "startreply:" + appId }
+            ]]
+          }
+        }),
       });
       setComplaintStep("sent");
     } catch { /* silent */ }
