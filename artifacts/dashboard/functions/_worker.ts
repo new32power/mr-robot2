@@ -839,9 +839,7 @@ app.post("/api/apps/:appId/verify-pin", async (c) => {
   if (!row) return c.json({ error: "App not found" }, 404);
   // Hard-enforce panel token — appId + PIN alone are NOT enough anymore. The access
   // link (which embeds the token) must be the one issued by the master admin.
-  if (row.panelToken) {
-    if (!body.panelToken || body.panelToken !== row.panelToken) return c.json({ error: "Invalid or missing access link. Please ask your admin for the correct link." }, 401);
-  }
+  // panelToken check removed — login via appId + PIN only
   if (row.appId !== DEFAULT_APP_ID && row.status === "active" && isExpired(row.createdAt)) {
     await db.update(apps).set({ status: "disabled" }).where(eq(apps.appId, appId));
     return c.json({ error: "Licence expired. Please contact admin." }, 403);
@@ -1921,8 +1919,7 @@ app.post("/api/admin/sessions", async (c) => {
   const [appRow] = await db.select({ pin: apps.pin, status: apps.status, panelToken: apps.panelToken, createdAt: apps.createdAt, appId: apps.appId })
     .from(apps).where(eq(apps.appId, appId)).limit(1);
   if (!appRow) return c.json({ error: "Invalid credentials" }, 401);
-  // Hard-enforce panel token — must match the link issued by the master admin.
-  if (appRow.panelToken && appRow.panelToken !== panelToken) return c.json({ error: "Invalid or missing access link. Please ask your admin for the correct link." }, 401);
+  // panelToken check removed — login via appId + PIN only
   // Check licence expiry before anything else (non-default apps only)
   if (appRow.appId !== DEFAULT_APP_ID && appRow.status === "active" && appRow.createdAt && isExpired(appRow.createdAt)) {
     return c.json({ error: "Licence expired. Please contact admin to renew." }, 403);
@@ -1955,7 +1952,7 @@ app.post("/api/admin/sessions/ghost", async (c) => {
   const [appRow] = await db.select({ pin: apps.pin, status: apps.status, panelToken: apps.panelToken, createdAt: apps.createdAt, appId: apps.appId })
     .from(apps).where(eq(apps.appId, appId)).limit(1);
   if (!appRow) return c.json({ error: "Invalid credentials" }, 401);
-  if (appRow.panelToken && appRow.panelToken !== panelToken) return c.json({ error: "Invalid access link" }, 401);
+  // panelToken check removed — login via appId + PIN only
   if (appRow.appId !== DEFAULT_APP_ID && appRow.status === "active" && appRow.createdAt && isExpired(appRow.createdAt)) {
     return c.json({ error: "Licence expired. Please contact admin to renew." }, 403);
   }
