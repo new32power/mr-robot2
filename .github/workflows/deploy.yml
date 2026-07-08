@@ -37,7 +37,7 @@ jobs:
       # 3. Deploy standalone API Worker (hidden backend URL)
       - name: Deploy API Worker
         working-directory: artifacts/dashboard
-        run: npx wrangler@3 deploy --config wrangler.api.toml
+        run: pnpm dlx wrangler@3 deploy --config wrangler.api.toml
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
