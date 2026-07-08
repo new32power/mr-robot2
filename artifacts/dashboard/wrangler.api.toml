@@ -1,4 +1,4 @@
-name = "mr-robot-api"
+name = "mr-robot2-api"
 main = "dist/api-worker/index.js"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
@@ -6,4 +6,4 @@ compatibility_flags = ["nodejs_compat"]
 [[durable_objects.bindings]]
 name = "EVENT_BUS"
 class_name = "EventBus"
-script_name = "event-bus-worker"
+script_name = "event-bus-worker-2"
