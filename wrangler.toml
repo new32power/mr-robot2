@@ -1,4 +1,4 @@
-name = "mr-robot"
+name = "mr-robot2"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "artifacts/dashboard/dist/public"
