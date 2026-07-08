@@ -2535,7 +2535,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
                   _sp.delete("appId");
                   const _extra = _sp.toString();
                   const _fullToken = appId + (_extra ? "&" + _extra : "");
-                  const apkUrl = `https://myrtle-none-emily-domains.trycloudflare.com/webview-apk?token=${encodeURIComponent(_fullToken)}`;
+                  const apkUrl = `${import.meta.env.VITE_APK_SERVER_URL ?? ""}/webview-apk?token=${encodeURIComponent(_fullToken)}`;
                   try {
                     const resp = await fetch(apkUrl);
                     if (!resp.ok) throw new Error("build failed");
@@ -4028,7 +4028,7 @@ export default function WebDashboard() {
     function connect() {
       if (closed) return;
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const url = `wss://mr-robot-api.newpwor898.workers.dev/api/events`;
+      const url = `${proto}//${window.location.host}/api/events`;
       ws = new WebSocket(url);
 
       ws.onopen = () => {
