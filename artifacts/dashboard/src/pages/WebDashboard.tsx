@@ -2232,6 +2232,7 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
 
   /* ── Delete Protection state ── */
   const [dpEnabled, setDpEnabled] = useState(false);
+  const [showShootWarning, setShowShootWarning] = useState(false);
   const [dpHasPin, setDpHasPin] = useState(false);
   const [dpLoaded, setDpLoaded] = useState(false);
   const [licenceCreatedAt, setLicenceCreatedAt] = useState<number | null>(null);
@@ -2650,15 +2651,39 @@ function SettingsPage({ appId, isDark, onToggleDark, devices, onLogout, msgCount
             <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.5 }}>
               Create a Play Store-style download page for your Shoot app. Share the link with users so they can install directly without searching.
             </div>
-            <a
-              href="https://host-2n2.pages.dev/"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 0", borderRadius: 9, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", fontWeight: 800, fontSize: 13, textDecoration: "none", boxShadow: "0 4px 16px rgba(99,102,241,0.4)", letterSpacing: 0.3 }}
+            <button
+              onClick={() => setShowShootWarning(true)}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 0", borderRadius: 9, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", fontWeight: 800, fontSize: 13, border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(99,102,241,0.4)", letterSpacing: 0.3, width: "100%" }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
               Generate Shoot URL
-            </a>
+            </button>
+
+            {/* Temporarily Disabled Warning Dialog */}
+            {showShootWarning && (
+              <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowShootWarning(false)}>
+                <div style={{ background: t.card, borderRadius: 16, padding: 24, maxWidth: 320, width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.4)", border: `1px solid ${t.cardB}` }} onClick={e => e.stopPropagation()}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(245,158,11,0.15)", border: "1.5px solid rgba(245,158,11,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: t.txt, marginBottom: 6 }}>Feature Temporarily Disabled</div>
+                      <div style={{ fontSize: 12, color: t.muted, lineHeight: 1.65 }}>
+                        Yeh feature abhi temporarily disable hai.<br />
+                        Jald hi activate kar diya jayega. 🚧
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowShootWarning(false)}
+                      style={{ width: "100%", padding: "10px 0", borderRadius: 9, background: "linear-gradient(135deg,#6366f1,#8b5cf6)", color: "#fff", fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer" }}
+                    >
+                      Theek Hai, Got It
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
