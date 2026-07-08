@@ -14,12 +14,16 @@
     const headers = new Headers(request.headers);
     headers.delete("host");
 
-    const proxied = new Request(targetUrl, {
+    // WebSocket upgrade — proxy transparently
+    if (request.headers.get("Upgrade") === "websocket") {
+      const wsUrl = targetUrl.replace(/^http/, "ws");
+      return fetch(new Request(wsUrl, { method: request.method, headers }));
+    }
+
+    return fetch(new Request(targetUrl, {
       method: request.method,
       headers,
       body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
-    });
-
-    return fetch(proxied);
+    }));
   };
   
