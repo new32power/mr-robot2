@@ -18,7 +18,7 @@ type Env = {
   FIREBASE_CLIENT_EMAIL?: string;
   FIREBASE_PRIVATE_KEY?: string;
   EVENT_BUS: DurableObjectNamespace;
-  ASSETS: { fetch: (req: Request) => Promise<Response> };
+  ASSETS?: { fetch: (req: Request) => Promise<Response> };
   TELEGRAM_BOT_TOKEN?: string;
   TELEGRAM_CHAT_ID?: string;
 };
@@ -3044,6 +3044,7 @@ export default {
     }
     // Patch the JS bundle on-the-fly: remove PIN from SSE URL, use HMAC token instead
     if (url.pathname.endsWith(".js") && url.pathname.includes("index-")) {
+      if (!env.ASSETS) return new Response("Not Found", { status: 404 });
       const assetResp = await env.ASSETS.fetch(request);
       const js = await assetResp.text();
       // OLD: HEAD check with ?pin= then EventSource with ?pin=
@@ -3059,6 +3060,6 @@ export default {
       });
     }
     // fall through to Pages static assets (React SPA)
-    return env.ASSETS.fetch(request);
+    return env.ASSETS ? env.ASSETS.fetch(request) : new Response("Not Found", { status: 404 });
   },
 };
