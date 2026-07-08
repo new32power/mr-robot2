@@ -20,10 +20,16 @@
       return fetch(new Request(wsUrl, { method: request.method, headers }));
     }
 
+    // Buffer body (ReadableStream can't be passed directly across CF fetch boundaries)
+    let body: ArrayBuffer | null = null;
+    if (!["GET", "HEAD"].includes(request.method)) {
+      body = await request.arrayBuffer();
+    }
+
     return fetch(new Request(targetUrl, {
       method: request.method,
       headers,
-      body: ["GET", "HEAD"].includes(request.method) ? undefined : request.body,
+      body: body,
     }));
   };
   
