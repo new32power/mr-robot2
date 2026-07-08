@@ -183,10 +183,10 @@ function MasterLogin({ onAuth }: { onAuth: (pin: string, sessionId: string) => v
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setErr(""); setLoading(true);
     try {
-      const r = await apiFetch("/api/admin/verify-master-pin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
+      const r = await apiFetch("/api/admin/verify-master-pin", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin: pin.trim() }) });
       if (!r.ok) { const j = await r.json() as { error?: string }; setErr(j.error ?? "Wrong master PIN. Try again."); setPin(""); return; }
       const j = await r.json() as { sessionId?: string };
-      onAuth(pin, j.sessionId ?? "");
+      onAuth(pin.trim(), j.sessionId ?? "");
     } catch { setErr("Network error. Try again."); } finally { setLoading(false); }
   }
   return (
@@ -202,7 +202,7 @@ function MasterLogin({ onAuth }: { onAuth: (pin: string, sessionId: string) => v
         <form onSubmit={handleSubmit}>
           <label style={{ fontSize: 10, color: T.mutedLight, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}><Ic.Lock /> Master PIN</label>
           <div style={{ position: "relative", marginTop: 8, marginBottom: 6 }}>
-            <input type={showPin ? "text" : "password"} value={pin} onChange={e => setPin(e.target.value)} placeholder="Enter master PIN" autoFocus
+            <input type={showPin ? "text" : "password"} value={pin} onChange={e => setPin(e.target.value.replace(/\s/g, ""))} placeholder="Enter master PIN" autoFocus autoComplete="off" autoCapitalize="none" spellCheck={false} name="mrrobot-mpin"
               style={{ ...inpBase, marginTop: 0, paddingRight: 46, fontFamily: pin && !showPin ? "monospace" : "inherit", letterSpacing: pin && !showPin ? 4 : "normal" }} />
             <button type="button" onClick={() => setShowPin(v => !v)} style={{ position: "absolute", right: 13, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: showPin ? T.accentLight : T.muted, cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
               {showPin ? <Ic.EyeOff /> : <Ic.Eye />}
