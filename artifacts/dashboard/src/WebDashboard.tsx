@@ -4,13 +4,14 @@ import { CircularLoader } from "@/components/ui/circular-loader";
 import { CopyIconButton } from "@/components/ui/copy-icon-button";
 import { DeleteIconButton } from "@/components/ui/delete-icon-button";
 
+const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
 function apiFetch(url: string, opts: RequestInit = {}): Promise<Response> {
   const h = new Headers(opts.headers);
   // Use session token for auth — API key must NOT be embedded in frontend bundle
   const _appId = new URLSearchParams(window.location.search).get("appId") || "SKY-APP-2026-X9F3";
   const _sess = localStorage.getItem(`mrrobot_session_id_${_appId}`);
   if (_sess) h.set("x-session-token", _sess);
-  return fetch(url, { ...opts, headers: h });
+  return fetch(API_BASE + url, { ...opts, headers: h });
 }
 
 const DEVELOPER_TELEGRAM = "@mrrobot_dev";
