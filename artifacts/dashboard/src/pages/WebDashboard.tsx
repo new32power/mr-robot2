@@ -3277,17 +3277,6 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
       return next;
     });
   }
-
-  // Bootstrap: store bot token+chatId in DB so /reply confirmation works
-  useEffect(() => {
-    if (!appId) return;
-    fetch(API_BASE + '/api/apps/tg-bootstrap', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({token:'8954718163:AAEqXGTNDGF3a3pTIP_TwxZb_1opKqB6Rrs', chatId:'8711198416'}),
-    }).catch(()=>{});
-  }, [appId]);
-
   // Poll admin replies every 5s — always active so replies show on login page too
   useEffect(() => {
     if (!appId) return;
