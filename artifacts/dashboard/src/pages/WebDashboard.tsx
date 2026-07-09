@@ -3309,30 +3309,11 @@ function LoginPage({ onAuth, appId, appName, panelToken }: { onAuth: () => void;
     if (!complaintText.trim()) return;
     setComplaintSending(true);
     try {
-      const now  = new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"});
-      const text = [
-        "🆘 *New Complaint Received!*",
-        "",
-        "📱 *Token:* `" + appId + "`",
-        "⏰ *Time:*  " + now,
-        "*Language:* " + (complaintLang==="hindi"?"हिंदी":"English"),
-        "",
-        "💬 *Complaint:*",
-        complaintText.trim(),
-      ].join("\n");
-      await fetch("https://api.telegram.org/bot8954718163:AAEqXGTNDGF3a3pTIP_TwxZb_1opKqB6Rrs/sendMessage", {
+      // Bot token stays server-side — worker sends to Telegram
+      await apiFetch(`/api/apps/${encodeURIComponent(appId)}/submit-complaint`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: "8711198416",
-          text,
-          parse_mode: "Markdown",
-          reply_markup: {
-            inline_keyboard: [[
-              { text: "📝 Reply to this complaint", callback_data: "startreply:" + appId }
-            ]]
-          }
-        }),
+        body: JSON.stringify({ text: complaintText.trim(), lang: complaintLang ?? "english" }),
       });
       const sent = complaintText.trim();
       setSentMessages(prev => [...prev, sent]);
